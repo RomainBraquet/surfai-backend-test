@@ -1,124 +1,211 @@
-// 🏄‍♂️ SurfAI Backend - Serveur principal
-// Point d'entrée de l'application
+// server.js
+// SurfAI Backend avec Profil Utilisateur Étendu
 
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const morgan = require('morgan');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-console.log('🏄‍♂️ Démarrage SurfAI Backend...');
+// ===== MIDDLEWARE =====
+app.use(cors());
+app.use(express.json());
 
-// 🛡️ Middlewares de sécurité
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    }
-  }
-}));
+// Middleware de logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
 
-app.use(compression());
-app.use(morgan('combined'));
+// ===== IMPORTS DES ROUTES =====
+// Routes existantes (si elles existent)
+let smartSlotsRouter;
+try {
+  smartSlotsRouter = require('./src/routes/smartSlots');
+} catch (error) {
+  console.log('Routes smartSlots non trouvées, création de routes mock...');
+}
 
-// 🌐 CORS sécurisé pour votre frontend
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:8080',
-    'http://127.0.0.1:5500', // Live Server VS Code
-    'file://', // Pour les tests locaux HTML
-    'null', // Pour les fichiers HTML ouverts directement
-    'https://surfai-backend.vercel.app', // ← FRONTEND VERCEL
-    'https://*.vercel.app' // ← TOUS LES DOMAINES VERCEL
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
-}));
+// Nouvelles routes profil
+let profileRouter;
+try {
+  profileRouter = require('./src/routes/profile');
+  console.log('✅ Routes profil chargées avec succès');
+} catch (error) {
+  console.log('❌ Erreur chargement routes profil:', error.message);
+}
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// ===== ROUTES DE BASE =====
 
-// 🏥 Health check - test simple pour vérifier que le serveur fonctionne
+// Route de santé
 app.get('/health', (req, res) => {
   res.json({
-    status: '✅ OK',
-    message: 'SurfAI Backend fonctionne parfaitement !',
+    status: 'OK',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     services: {
-      stormglass: process.env.STORMGLASS_API_KEY ? '🌊 Configuré' : '❌ Manquant',
-      environment: process.env.NODE_ENV || 'development'
+      smartSlots: smartSlotsRouter ? 'active' : 'inactive',
+      userProfile: profileRouter ? 'active' : 'inactive'
     }
   });
 });
 
-// 📡 Routes API - on les ajoutera dans la partie suivante
-app.use('/api/v1', require('./src/routes/api'));
-
-// 🏠 Route racine
+// Route racine
 app.get('/', (req, res) => {
   res.json({
-    message: '🏄‍♂️ Bienvenue sur SurfAI Backend !',
+    message: 'SurfAI Backend API',
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      api: '/api/v1',
-      weather: '/api/v1/weather/forecast'
+      smartSlots: '/api/v1/smart-slots',
+      profile: '/api/v1/profile'
     },
-    documentation: 'https://github.com/votre-projet/surfai-backend'
+    features: [
+      'Prédictions surf intelligentes',
+      'Profil utilisateur étendu',
+      'Gestion équipement',
+      'Historique sessions',
+      'Recommandations personnalisées'
+    ]
   });
 });
 
-// 🚨 Gestion d'erreurs globales
-app.use((err, req, res, next) => {
-  console.error('❌ Erreur serveur:', err);
+// ===== ROUTES API =====
+
+// Routes smart-slots existantes (si disponibles)
+if (smartSlotsRouter) {
+  app.use('/api/v1/smart-slots', smartSlotsRouter);
+  console.log('✅ Routes smart-slots montées sur /api/v1/smart-slots');
+} else {
+  // Route mock pour smart-slots si pas disponible
+  app.get('/api/v1/smart-slots', (req, res) => {
+    res.json({
+      status: 'success',
+      message: 'Smart-slots mock - service en développement',
+      data: {
+        spot: 'Biarritz',
+        conditions: 'Mock data - intégration Stormglass en cours',
+        slots: [
+          {
+            time: '09:00',
+            score: 8.5,
+            conditions: 'Excellent pour débutants'
+          }
+        ]
+      }
+    });
+  });
+  console.log('⚠️  Routes smart-slots mock créées');
+}
+
+// Nouvelles routes profil
+if (profileRouter) {
+  app.use('/api/v1/profile', profileRouter);
+  console.log('✅ Routes profil montées sur /api/v1/profile');
+} else {
+  // Route mock pour profil si pas disponible
+  app.get('/api/v1/profile/test', (req, res) => {
+    res.json({
+      status: 'error',
+      message: 'Service profil non disponible - vérifiez le fichier routes/profile.js'
+    });
+  });
+  console.log('❌ Routes profil non disponibles - mock créé');
+}
+
+// ===== ROUTES DE TEST SPÉCIFIQUES =====
+
+// Test intégration complète
+app.get('/api/v1/test/integration', (req, res) => {
+  res.json({
+    status: 'success',
+    message: 'SurfAI V1 - Test d\'intégration',
+    timestamp: new Date().toISOString(),
+    components: {
+      server: 'OK',
+      cors: 'OK',
+      express: 'OK',
+      smartSlots: smartSlotsRouter ? 'OK' : 'MOCK',
+      userProfile: profileRouter ? 'OK' : 'ERROR'
+    },
+    nextSteps: [
+      'Tester /api/v1/profile/test',
+      'Créer un profil utilisateur test',
+      'Intégrer avec le frontend'
+    ]
+  });
+});
+
+// Test création profil rapide
+app.post('/api/v1/test/quick-profile', (req, res) => {
+  if (!profileRouter) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'Service profil non disponible'
+    });
+  }
+
+  // Données de test par défaut
+  const testProfile = {
+    name: 'Test Surfer',
+    email: 'test@surfai.com',
+    location: 'Biarritz, France',
+    surfLevel: 5,
+    minWaveSize: 0.5,
+    maxWaveSize: 2.5,
+    optimalWaveSize: 1.5,
+    maxTravelDistance: 25
+  };
+
+  res.json({
+    status: 'success',
+    message: 'Profil test créé',
+    data: testProfile,
+    info: 'Utilisez POST /api/v1/profile/create avec ces données pour tester'
+  });
+});
+
+// ===== GESTION D'ERREURS =====
+
+// 404 - Route non trouvée
+app.use('*', (req, res) => {
+  res.status(404).json({
+    status: 'error',
+    message: 'Route non trouvée',
+    availableRoutes: [
+      'GET /',
+      'GET /health',
+      'GET /api/v1/smart-slots',
+      'GET /api/v1/profile/test',
+      'POST /api/v1/profile/create',
+      'GET /api/v1/test/integration'
+    ]
+  });
+});
+
+// Gestionnaire d'erreurs global
+app.use((error, req, res, next) => {
+  console.error('Erreur serveur:', error);
   res.status(500).json({
-    error: 'Erreur interne du serveur',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Une erreur s\'est produite',
+    status: 'error',
+    message: 'Erreur interne du serveur',
     timestamp: new Date().toISOString()
   });
 });
 
-// 🚫 Route 404 - page non trouvée
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Route non trouvée',
-    message: `La route ${req.originalUrl} n'existe pas`,
-    availableRoutes: ['/', '/health', '/api/v1']
-  });
-});
-
-// 🚀 Démarrage du serveur
+// ===== DÉMARRAGE SERVEUR =====
 app.listen(PORT, () => {
-  console.log('\n🌊 ================================');
-  console.log('🏄‍♂️ SurfAI Backend DÉMARRÉ !');
-  console.log('🌊 ================================');
-  console.log(`🚀 Port: ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 URL: http://localhost:${PORT}`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-  console.log(`📡 API: http://localhost:${PORT}/api/v1`);
-  console.log('🌊 ================================\n');
+  console.log('\n🚀 ===== SURFAI BACKEND V1 DÉMARRÉ =====');
+  console.log(`📡 Serveur: http://localhost:${PORT}`);
+  console.log(`🌐 Production: Railway auto-deploy détecté`);
+  console.log('\n📋 Endpoints disponibles:');
+  console.log(`   - Health: ${PORT}/health`);
+  console.log(`   - API Root: ${PORT}/api/v1`);
+  console.log(`   - Smart Slots: ${PORT}/api/v1/smart-slots`);
+  console.log(`   - Profile: ${PORT}/api/v1/profile/test`);
+  console.log(`   - Integration: ${PORT}/api/v1/test/integration`);
+  console.log('\n🔧 Services:');
+  console.log(`   - Smart Slots: ${smartSlotsRouter ? '✅ Actif' : '⚠️  Mock'}`);
+  console.log(`   - User Profile: ${profileRouter ? '✅ Actif' : '❌ Erreur'}`);
+  console.log('\n🏄‍♂️ SurfAI V1 ready to surf!\n');
 });
-
-// 🛡️ Gestion propre de l'arrêt du serveur
-process.on('SIGTERM', () => {
-  console.log('🛑 Arrêt du serveur SurfAI...');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('\n🛑 Arrêt du serveur SurfAI...');
-  process.exit(0);
-});
-
-module.exports = app;
