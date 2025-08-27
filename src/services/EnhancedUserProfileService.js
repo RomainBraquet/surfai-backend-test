@@ -1,424 +1,440 @@
-// BACKEND - SYSTÈME DE PROFIL UTILISATEUR ÉTENDU V1
-// À ajouter dans votre backend Railway
+// src/services/EnhancedUserProfileService.js
+// SurfAI V1 - Service de Profil Utilisateur Étendu - VERSION COMPLÈTE
 
-const EnhancedUserProfileService = {
+class EnhancedUserProfileService {
+  constructor() {
+    // Base de données temporaire en mémoire (sera remplacée par vraie DB plus tard)
+    this.users = new Map();
+    this.sessions = new Map();
+    this.spots = new Map();
+    
+    // Initialisation des données de test
+    this.initializeTestData();
+  }
 
-   // MODÈLE DE DONNÉES UTILISATEUR COMPLET
-   userProfileSchema: {
-       // Identification de base
-       userId: "string",
-       createdAt: "timestamp",
-       updatedAt: "timestamp",
-       
-       // Profil surfeur détaillé
-       surferProfile: {
-           // Niveau nuancé (1-10 au lieu de 4 catégories)
-           skillLevel: {
-               overall: 6, // 1-10 scale
-               subSkills: {
-                   paddleStrength: 7,      // Endurance rame
-                   waveReading: 5,         // Lecture des vagues  
-                   maneuvers: 4,           // Niveau manoeuvres
-                   conditionsAdaptability: 6, // Adaptation conditions variées
-                   safetyAwareness: 8      // Conscience sécurité
-               },
-               progression: {
-                   startingLevel: 4,
-                   currentLevel: 6,
-                   progressionRate: "steady", // slow/steady/fast
-                   plateauAlerts: false
-               }
-           },
-           
-           // Préférences physiques et limites
-           physicalProfile: {
-               comfortWaveRange: { min: 0.8, max: 2.2 }, // mètres
-               windTolerance: 25, // km/h max
-               optimalSessionDuration: 90, // minutes
-               fitnessLevel: "intermediate", // beginner/intermediate/advanced/expert
-               injuries: [], // Historique blessures affectant surf
-               preferredTimeSlots: ["morning", "evening"] // dawn/morning/afternoon/evening/night
-           }
-       },
+  // ===== GESTION PROFIL UTILISATEUR =====
+  
+  createUserProfile(userData) {
+    const userId = this.generateId();
+    const profile = {
+      id: userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      
+      // INFOS PERSONNELLES
+      personal: {
+        name: userData.name || '',
+        email: userData.email || '',
+        location: userData.location || '',
+        timezone: userData.timezone || 'Europe/Paris'
+      },
+      
+      // NIVEAU SURF (1-10 au lieu de 4 catégories)
+      surfLevel: {
+        overall: userData.surfLevel || 1, // 1-10
+        progression: {
+          paddling: userData.paddling || 1,
+          takeoff: userData.takeoff || 1,
+          turning: userData.turning || 1,
+          tubeRiding: userData.tubeRiding || 1
+        },
+        experience: {
+          yearsActive: userData.yearsActive || 0,
+          sessionsCount: 0, // Auto-calculé
+          lastSession: null
+        }
+      },
+      
+      // ÉQUIPEMENT DÉTAILLÉ
+      equipment: {
+        boards: userData.boards || [],
+        suits: userData.suits || [],
+        accessories: userData.accessories || []
+      },
+      
+      // PRÉFÉRENCES PHYSIQUES
+      preferences: {
+        waveSize: {
+          min: userData.minWaveSize || 0.3, // mètres
+          max: userData.maxWaveSize || 2.0,
+          optimal: userData.optimalWaveSize || 1.2
+        },
+        windTolerance: {
+          onshore: userData.onshoreWind || 15, // km/h max
+          offshore: userData.offshoreWind || 25,
+          sideshore: userData.sideshoreWind || 20
+        },
+        crowdTolerance: userData.crowdTolerance || 'medium', // low/medium/high
+        waterTemp: {
+          min: userData.minWaterTemp || 12 // °C
+        }
+      },
+      
+      // SPOTS FAVORIS & HISTORIQUE
+      spots: {
+        favorites: userData.favoriteSpots || [],
+        history: [], // Auto-rempli par les sessions
+        blacklist: userData.blacklistedSpots || []
+      },
+      
+      // DISPONIBILITÉS
+      availability: {
+        schedule: userData.schedule || {
+          monday: { available: false, timeSlots: [] },
+          tuesday: { available: false, timeSlots: [] },
+          wednesday: { available: false, timeSlots: [] },
+          thursday: { available: false, timeSlots: [] },
+          friday: { available: false, timeSlots: [] },
+          saturday: { available: true, timeSlots: ['06:00-12:00', '14:00-18:00'] },
+          sunday: { available: true, timeSlots: ['06:00-12:00', '14:00-18:00'] }
+        },
+        travelDistance: userData.maxTravelDistance || 30, // km
+        notificationPrefs: {
+          advance: userData.notificationAdvance || 24, // heures
+          types: userData.notificationTypes || ['optimal', 'alternative']
+        }
+      },
+      
+      // OBJECTIFS PERSONNELS
+      goals: {
+        current: userData.currentGoals || [],
+        achievements: [],
+        progressTracking: {
+          sessionsThisMonth: 0,
+          progressionPoints: 0,
+          challengesCompleted: []
+        }
+      }
+    };
+    
+    this.users.set(userId, profile);
+    return profile;
+  }
 
-       // Équipement complet avec specs
-       equipment: {
-           boards: [
-               {
-                   id: "board_001",
-                   name: "Ma Longboard Principale",
-                   specifications: {
-                       length: 9.2,     // pieds
-                       width: 22.5,     // pouces
-                       thickness: 3.0,  // pouces  
-                       volume: 65.5,    // litres
-                       type: "longboard",
-                       construction: "PU/polyester",
-                       finSetup: "single_fin"
-                   },
-                   details: {
-                       shaper: "Robert August",
-                       model: "What I Ride",
-                       year: 2022,
-                       condition: "excellent", // poor/fair/good/excellent
-                       purchasePrice: 850,
-                       currentValue: 650
-                   },
-                   performance: {
-                       optimalConditions: {
-                           waveSize: { min: 1.0, max: 2.5 },
-                           waveType: ["point_break", "beach_break"],
-                           windMax: 20,
-                           crowdTolerance: "medium"
-                       },
-                       userRating: 4.2,        // 1-5 basé sur sessions
-                       sessionsCount: 23,      // Nombre sessions avec cette board
-                       bestSession: {
-                           date: "2025-01-15",
-                           spot: "Biarritz",
-                           rating: 5,
-                           conditions: "1.4m, offshore 10km/h"
-                       }
-                   }
-               }
-           ],
-           
-           wetsuits: [
-               {
-                   thickness: "3/2mm",
-                   brand: "Patagonia R1",
-                   condition: "good",
-                   temperatureRange: { min: 14, max: 20 } // °C
-               }
-           ],
-           
-           accessories: {
-               leashes: ["9ft longboard leash", "6ft shortboard leash"],
-               wax: ["cold_water", "tropical"],
-               other: ["surf_watch", "gopro", "wetsuit_boots"]
-           }
-       },
+  updateUserProfile(userId, updates) {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error('Utilisateur non trouvé');
+    }
+    
+    // Mise à jour profonde des objets
+    const updatedUser = this.deepMerge(user, updates);
+    updatedUser.updatedAt = new Date().toISOString();
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
 
-       // Spots avec historique personnel  
-       spots: {
-           favorites: [
-               {
-                   name: "Biarritz Grande Plage",
-                   coordinates: { lat: 43.4832, lng: -1.5586 },
-                   personalStats: {
-                       sessionsCount: 23,
-                       averageRating: 3.8,
-                       bestRating: 5,
-                       worstRating: 2,
-                       lastSession: "2025-01-20"
-                   },
-                   personalInsights: {
-                       bestConditions: "1.2-1.6m, vent offshore < 15km/h",
-                       optimalTiming: "2h après basse mer",
-                       crowdPatterns: "Moins de monde avant 8h et après 17h",
-                       personalNotes: "Mon spot de progression, excellent pour longboard",
-                       boardPreferences: ["Ma Longboard Principale"],
-                       seasonalNotes: {
-                           summer: "Parfait débutant, mais crowdé",
-                           winter: "Plus gros, attention courants"
-                       }
-                   }
-               }
-           ],
-           
-           blacklist: [
-               {
-                   name: "La Nord", 
-                   reason: "Trop technique pour mon niveau actuel",
-                   dateAdded: "2024-12-15"
-               }
-           ],
-           
-           wishlist: [
-               {
-                   name: "Ericeira", 
-                   country: "Portugal",
-                   reason: "Trip prévu été 2025",
-                   priority: "high"
-               }
-           ]
-       },
+  getUserProfile(userId) {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error('Utilisateur non trouvé');
+    }
+    return user;
+  }
 
-       // Préférences et style de surf
-       surfingStyle: {
-           preferredSurfType: "longboard_classic", // performance/classic/soul/competitive
-           riskTolerance: "conservative", // conservative/moderate/aggressive
-           progressionGoals: [
-               "Maîtriser cutback en longboard",
-               "Surfer régulièrement en 2m+", 
-               "Apprendre noseriding"
-           ],
-           inspirations: ["Joel Tudor", "Kassia Meador"], // Surfeurs modèles
-           surfPhilosophy: "soul_surfer" // competitor/fitness/soul_surfer/lifestyle
-       }
-   },
+  // ===== GESTION ÉQUIPEMENT =====
+  
+  addBoard(userId, boardData) {
+    const user = this.getUserProfile(userId);
+    
+    const board = {
+      id: this.generateId(),
+      type: boardData.type, // shortboard, longboard, fish, etc.
+      brand: boardData.brand || '',
+      model: boardData.model || '',
+      dimensions: {
+        length: boardData.length || 0,
+        width: boardData.width || 0,
+        thickness: boardData.thickness || 0,
+        volume: boardData.volume || 0
+      },
+      conditions: {
+        minWaveSize: boardData.minWaveSize || 0.3,
+        maxWaveSize: boardData.maxWaveSize || 2.0,
+        optimalWaveSize: boardData.optimalWaveSize || 1.2
+      },
+      notes: boardData.notes || '',
+      addedAt: new Date().toISOString()
+    };
+    
+    user.equipment.boards.push(board);
+    this.users.set(userId, user);
+    
+    return board;
+  }
 
-   // CRÉATION/MISE À JOUR PROFIL
-   async createOrUpdateProfile(userId, profileData) {
-       try {
-           console.log(`Mise à jour profil utilisateur ${userId}`);
-           
-           // Validation des données
-           const validatedData = this.validateProfileData(profileData);
-           
-           // Calcul automatique de métriques dérivées
-           const enrichedData = await this.enrichProfileData(validatedData);
-           
-           // Sauvegarde en base (adapter selon votre DB)
-           const savedProfile = await this.saveToDatabase(userId, enrichedData);
-           
-           // Mise à jour cache prédictions
-           await this.invalidatePredictionCache(userId);
-           
-           return {
-               success: true,
-               profile: savedProfile,
-               insights: await this.generateProfileInsights(savedProfile)
-           };
-           
-       } catch (error) {
-           console.error('Erreur mise à jour profil:', error);
-           return { success: false, error: error.message };
-       }
-   },
+  // ===== GESTION SESSIONS =====
+  
+  addSession(userId, sessionData) {
+    const user = this.getUserProfile(userId);
+    const sessionId = this.generateId();
+    
+    const session = {
+      id: sessionId,
+      userId: userId,
+      date: sessionData.date || new Date().toISOString(),
+      spot: {
+        name: sessionData.spotName || '',
+        coordinates: sessionData.coordinates || null
+      },
+      conditions: {
+        waveHeight: sessionData.waveHeight || 0,
+        wavePeriod: sessionData.wavePeriod || 0,
+        windSpeed: sessionData.windSpeed || 0,
+        windDirection: sessionData.windDirection || '',
+        tide: sessionData.tide || ''
+      },
+      equipment: {
+        board: sessionData.boardId || null,
+        suit: sessionData.suitId || null
+      },
+      rating: {
+        overall: sessionData.rating || 5,
+        waves: sessionData.waveRating || 5,
+        crowd: sessionData.crowdRating || 5,
+        fun: sessionData.funRating || 5
+      },
+      duration: sessionData.duration || 60, // minutes
+      notes: sessionData.notes || '',
+      photos: sessionData.photos || []
+    };
+    
+    this.sessions.set(sessionId, session);
+    
+    // Mise à jour des statistiques utilisateur
+    user.surfLevel.experience.sessionsCount += 1;
+    user.surfLevel.experience.lastSession = session.date;
+    user.goals.progressTracking.sessionsThisMonth += 1;
+    
+    // Ajout du spot à l'historique
+    if (!user.spots.history.find(spot => spot.name === session.spot.name)) {
+      user.spots.history.push({
+        name: session.spot.name,
+        coordinates: session.spot.coordinates,
+        sessionsCount: 1,
+        lastVisit: session.date,
+        averageRating: session.rating.overall
+      });
+    } else {
+      const spotHistory = user.spots.history.find(spot => spot.name === session.spot.name);
+      spotHistory.sessionsCount += 1;
+      spotHistory.lastVisit = session.date;
+      // Recalcul de la moyenne (simplifié)
+      spotHistory.averageRating = (spotHistory.averageRating + session.rating.overall) / 2;
+    }
+    
+    this.users.set(userId, user);
+    
+    return session;
+  }
 
-   // ENRICHISSEMENT AUTOMATIQUE DES DONNÉES
-   async enrichProfileData(profileData) {
-       const enriched = { ...profileData };
-       
-       // Calcul niveau global depuis sub-skills
-       if (enriched.surferProfile?.skillLevel?.subSkills) {
-           const subSkills = enriched.surferProfile.skillLevel.subSkills;
-           const avgLevel = Object.values(subSkills).reduce((sum, val) => sum + val, 0) / Object.keys(subSkills).length;
-           enriched.surferProfile.skillLevel.overall = Math.round(avgLevel * 10) / 10;
-       }
-       
-       // Analyse équipement pour recommandations
-       if (enriched.equipment?.boards) {
-           enriched.equipment.analysis = this.analyzeEquipmentGaps(enriched.equipment.boards);
-       }
-       
-       // Calcul métriques spots favoris
-       if (enriched.spots?.favorites) {
-           enriched.spots.analytics = this.calculateSpotAnalytics(enriched.spots.favorites);
-       }
-       
-       return enriched;
-   },
+  getUserSessions(userId, limit = 10, offset = 0) {
+    const userSessions = Array.from(this.sessions.values())
+      .filter(session => session.userId === userId)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(offset, offset + limit);
+    
+    return {
+      sessions: userSessions,
+      total: Array.from(this.sessions.values()).filter(session => session.userId === userId).length,
+      limit,
+      offset
+    };
+  }
 
-   // ANALYSE GAPS ÉQUIPEMENT
-   analyzeEquipmentGaps(boards) {
-       const analysis = {
-           coverage: this.calculateSizeRangeCoverage(boards),
-           recommendations: [],
-           strengths: [],
-           gaps: []
-       };
-       
-       // Analyse couverture taille vagues
-       const totalRange = { min: 10, max: 0 };
-       boards.forEach(board => {
-           if (board.performance?.optimalConditions?.waveSize) {
-               const range = board.performance.optimalConditions.waveSize;
-               totalRange.min = Math.min(totalRange.min, range.min);
-               totalRange.max = Math.max(totalRange.max, range.max);
-           }
-       });
-       
-       // Détection gaps
-       if (totalRange.min > 0.8) {
-           analysis.gaps.push("Manque board petites vagues (< 0.8m)");
-           analysis.recommendations.push({
-               type: "longboard_small_waves",
-               reason: "Améliorer sessions petites conditions",
-               priority: "medium"
-           });
-       }
-       
-       if (totalRange.max < 2.5) {
-           analysis.gaps.push("Manque board grosses vagues (> 2.5m)");
-           analysis.recommendations.push({
-               type: "semi_gun",
-               reason: "Progresser dans vagues plus importantes",
-               priority: "low"
-           });
-       }
-       
-       return analysis;
-   },
+  // ===== GESTION SPOTS FAVORIS =====
+  
+  addFavoriteSpot(userId, spotId, reason = '') {
+    const user = this.getUserProfile(userId);
+    
+    const favorite = {
+      spotId,
+      reason,
+      addedAt: new Date().toISOString()
+    };
+    
+    if (!user.spots.favorites.find(fav => fav.spotId === spotId)) {
+      user.spots.favorites.push(favorite);
+      this.users.set(userId, user);
+    }
+    
+    return favorite;
+  }
 
-   // GÉNÉRATION INSIGHTS PROFIL
-   async generateProfileInsights(profile) {
-       const insights = {
-           strengths: [],
-           improvementAreas: [],
-           recommendations: [],
-           progressionPath: []
-       };
-       
-       // Analyse niveau et progression
-       const skillLevel = profile.surferProfile?.skillLevel;
-       if (skillLevel) {
-           if (skillLevel.overall >= 7) {
-               insights.strengths.push("Niveau avancé confirmé");
-           }
-           
-           // Détection déséquilibres compétences
-           const subSkills = skillLevel.subSkills;
-           const avgSkill = skillLevel.overall;
-           
-           Object.entries(subSkills).forEach(([skill, level]) => {
-               if (level < avgSkill - 1.5) {
-                   insights.improvementAreas.push({
-                       skill: skill,
-                       currentLevel: level,
-                       targetLevel: Math.min(10, avgSkill),
-                       priority: "high"
-                   });
-               }
-           });
-       }
-       
-       // Recommandations équipement
-       if (profile.equipment?.analysis?.recommendations) {
-           insights.recommendations.push(...profile.equipment.analysis.recommendations);
-       }
-       
-       // Path de progression suggéré
-       insights.progressionPath = this.generateProgressionPath(profile);
-       
-       return insights;
-   },
+  // ===== RECOMMANDATIONS PERSONNALISÉES =====
+  
+  getPersonalizedRecommendations(userId, lat, lng, days = 3) {
+    const user = this.getUserProfile(userId);
+    
+    // Mock de recommandations basées sur le profil
+    const recommendations = {
+      user: {
+        name: user.personal.name,
+        level: user.surfLevel.overall,
+        preferences: user.preferences.waveSize
+      },
+      location: { lat, lng },
+      recommendations: [
+        {
+          spot: 'Biarritz - Grande Plage',
+          distance: 2.5,
+          score: this.calculateSpotScore(user, { waveHeight: 1.2, windSpeed: 10 }),
+          conditions: {
+            waveHeight: 1.2,
+            period: 12,
+            windSpeed: 10,
+            windDirection: 'E'
+          },
+          suitability: 'Parfait pour votre niveau',
+          bestTime: '09:00-12:00'
+        },
+        {
+          spot: 'Anglet - Les Cavaliers',
+          distance: 5.2,
+          score: this.calculateSpotScore(user, { waveHeight: 1.5, windSpeed: 15 }),
+          conditions: {
+            waveHeight: 1.5,
+            period: 10,
+            windSpeed: 15,
+            windDirection: 'NE'
+          },
+          suitability: 'Bon pour progression',
+          bestTime: '14:00-17:00'
+        }
+      ],
+      alternatives: [
+        {
+          spot: 'Hendaye',
+          distance: 18.5,
+          reason: 'Conditions plus protégées',
+          score: this.calculateSpotScore(user, { waveHeight: 0.8, windSpeed: 8 })
+        }
+      ]
+    };
+    
+    return recommendations;
+  }
 
-   // GÉNÉRATION PATH DE PROGRESSION
-   generateProgressionPath(profile) {
-       const currentLevel = profile.surferProfile?.skillLevel?.overall || 5;
-       const path = [];
-       
-       if (currentLevel < 7) {
-           path.push({
-               phase: "Consolidation bases",
-               skills: ["paddleStrength", "waveReading"],
-               targetConditions: "1.0-1.8m, conditions clean",
-               estimatedDuration: "3-6 mois"
-           });
-       }
-       
-       if (currentLevel >= 6) {
-           path.push({
-               phase: "Développement manoeuvres",
-               skills: ["maneuvers", "conditionsAdaptability"], 
-               targetConditions: "1.5-2.5m, conditions variées",
-               estimatedDuration: "6-12 mois"
-           });
-       }
-       
-       return path;
-   },
+  // ===== SUIVI PROGRESSION =====
+  
+  getProgressTracking(userId) {
+    const user = this.getUserProfile(userId);
+    const sessions = this.getUserSessions(userId, 50, 0);
+    
+    return {
+      currentLevel: user.surfLevel.overall,
+      progression: user.surfLevel.progression,
+      stats: {
+        totalSessions: user.surfLevel.experience.sessionsCount,
+        thisMonth: user.goals.progressTracking.sessionsThisMonth,
+        averageRating: this.calculateAverageRating(sessions.sessions),
+        favoriteSpots: user.spots.favorites.length
+      },
+      goals: user.goals,
+      nextLevel: {
+        target: user.surfLevel.overall + 1,
+        requirements: this.getNextLevelRequirements(user.surfLevel.overall)
+      }
+    };
+  }
 
-   // VALIDATION DONNÉES
-   validateProfileData(data) {
-       // Validation niveau (1-10)
-       if (data.surferProfile?.skillLevel?.overall) {
-           const level = data.surferProfile.skillLevel.overall;
-           if (level < 1 || level > 10) {
-               throw new Error("Niveau global doit être entre 1 et 10");
-           }
-       }
-       
-       // Validation range vagues confort
-       if (data.surferProfile?.physicalProfile?.comfortWaveRange) {
-           const range = data.surferProfile.physicalProfile.comfortWaveRange;
-           if (range.min >= range.max) {
-               throw new Error("Range vagues invalide: min doit être < max");
-           }
-       }
-       
-       return data;
-   },
+  // ===== MÉTHODES UTILITAIRES =====
+  
+  generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
 
-   // INTERFACE RÉCUPÉRATION PROFIL ENRICHI
-   async getEnrichedProfile(userId) {
-       try {
-           const profile = await this.getFromDatabase(userId);
-           if (!profile) {
-               return { success: false, error: "Profil non trouvé" };
-           }
-           
-           // Enrichir avec données temps réel
-           const enriched = await this.enrichWithRealtimeData(profile);
-           
-           return {
-               success: true,
-               profile: enriched,
-               lastUpdated: profile.updatedAt,
-               completionLevel: this.calculateProfileCompletion(enriched)
-           };
-           
-       } catch (error) {
-           console.error('Erreur récupération profil:', error);
-           return { success: false, error: error.message };
-       }
-   },
+  deepMerge(target, source) {
+    const output = Object.assign({}, target);
+    if (this.isObject(target) && this.isObject(source)) {
+      Object.keys(source).forEach(key => {
+        if (this.isObject(source[key])) {
+          if (!(key in target))
+            Object.assign(output, { [key]: source[key] });
+          else
+            output[key] = this.deepMerge(target[key], source[key]);
+        } else {
+          Object.assign(output, { [key]: source[key] });
+        }
+      });
+    }
+    return output;
+  }
 
-   // CALCUL NIVEAU COMPLÉTION PROFIL
-   calculateProfileCompletion(profile) {
-       let completedFields = 0;
-       let totalFields = 20; // Nombre champs importants
-       
-       // Vérification champs essentiels
-       if (profile.surferProfile?.skillLevel?.overall) completedFields++;
-       if (profile.equipment?.boards?.length > 0) completedFields += 3;
-       if (profile.spots?.favorites?.length > 0) completedFields += 2;
-       // ... autres vérifications
-       
-       return {
-           percentage: Math.round((completedFields / totalFields) * 100),
-           missingFields: this.identifyMissingFields(profile),
-           priority: completedFields < 10 ? "high" : "medium"
-       };
-   },
+  isObject(item) {
+    return item && typeof item === 'object' && !Array.isArray(item);
+  }
 
-   // FONCTIONS UTILITAIRES (à implémenter selon votre DB)
-   async saveToDatabase(userId, profileData) {
-       // TODO: Implémenter sauvegarde selon votre base de données
-       return profileData;
-   },
+  calculateSpotScore(user, conditions) {
+    let score = 5.0;
+    
+    // Facteur taille de vague
+    const waveOptimal = user.preferences.waveSize.optimal;
+    const waveHeight = conditions.waveHeight;
+    const waveFactor = 1 - Math.abs(waveHeight - waveOptimal) / waveOptimal;
+    score *= waveFactor;
+    
+    // Facteur vent
+    const windTolerance = user.preferences.windTolerance.onshore;
+    const windFactor = Math.max(0, 1 - conditions.windSpeed / windTolerance);
+    score *= windFactor;
+    
+    // Facteur niveau
+    const levelFactor = Math.min(1, user.surfLevel.overall / 10);
+    score *= (0.7 + 0.3 * levelFactor);
+    
+    return Math.round(score * 10) / 10;
+  }
 
-   async getFromDatabase(userId) {
-       // TODO: Implémenter récupération depuis votre base de données
-       return null;
-   },
+  calculateAverageRating(sessions) {
+    if (sessions.length === 0) return 0;
+    const total = sessions.reduce((sum, session) => sum + session.rating.overall, 0);
+    return Math.round((total / sessions.length) * 10) / 10;
+  }
 
-   async invalidatePredictionCache(userId) {
-       // TODO: Invalider cache prédictions pour forcer recalcul
-       console.log(`Cache prédictions invalidé pour ${userId}`);
-   },
+  getNextLevelRequirements(currentLevel) {
+    const requirements = {
+      1: ['Apprendre à ramer', 'Première mousse'],
+      2: ['Take-off en mousse', '10 sessions'],
+      3: ['Take-off vague verte', 'Comprendre les priorités'],
+      4: ['Premier virage', '25 sessions'],
+      5: ['Bottom turn', 'Surf en autonomie'],
+      6: ['Cut back', '50 sessions'],
+      7: ['Tube riding débutant', 'Surf spots variés'],
+      8: ['Manoeuvres avancées', '100+ sessions'],
+      9: ['Compétition locale', 'Mentor autres surfeurs'],
+      10: ['Expert local', 'Toutes conditions']
+    };
+    
+    return requirements[currentLevel + 1] || ['Niveau maximum atteint'];
+  }
 
-   calculateSizeRangeCoverage(boards) {
-       // Logique calcul couverture
-       return { min: 0.8, max: 3.0 };
-   },
+  initializeTestData() {
+    // Création d'un utilisateur de test
+    const testUser = this.createUserProfile({
+      name: 'Jean Surfer',
+      email: 'jean@surfai.com',
+      location: 'Biarritz, France',
+      surfLevel: 6,
+      minWaveSize: 0.8,
+      maxWaveSize: 2.5,
+      optimalWaveSize: 1.5,
+      maxTravelDistance: 35
+    });
+    
+    // Ajout d'une session test
+    this.addSession(testUser.id, {
+      spotName: 'Biarritz - Grande Plage',
+      waveHeight: 1.2,
+      windSpeed: 12,
+      windDirection: 'E',
+      rating: 8,
+      duration: 90,
+      notes: 'Super session matinale !'
+    });
+  }
+}
 
-   calculateSpotAnalytics(spots) {
-       // Logique analytics spots
-       return { totalSessions: 0, averageRating: 0 };
-   },
-
-   enrichWithRealtimeData(profile) {
-       // Enrichissement temps réel
-       return profile;
-   },
-
-   identifyMissingFields(profile) {
-       // Identification champs manquants
-       return [];
-   }
-};
-
-module.exports = EnhancedUserProfileService;  
+// Export de la classe
+module.exports = EnhancedUserProfileService;
