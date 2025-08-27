@@ -136,6 +136,21 @@ app.get('/api/v1/test/integration', (req, res) => {
   });
 });
 
+// Import routes sessions
+let sessionsRouter;
+try {
+  sessionsRouter = require('./src/routes/sessions');
+  console.log('✅ Routes sessions chargées');
+} catch (error) {
+  console.log('❌ Routes sessions non trouvées');
+}
+
+// Montage des routes sessions (après les autres routes)
+if (sessionsRouter) {
+  app.use('/api/v1/sessions', sessionsRouter);
+  console.log('✅ Routes sessions montées sur /api/v1/sessions');
+}
+
 // Test création profil rapide
 app.post('/api/v1/test/quick-profile', (req, res) => {
   if (!profileRouter) {
