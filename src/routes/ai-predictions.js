@@ -434,7 +434,7 @@ router.get('/demo/:userId', async (req, res) => {
 
     res.json({
       status: 'demo_success',
-      title: '🤖 SurfAI - Démonstration Moteur IA',
+      title: 'SurfAI - Démonstration Moteur IA',
       userId: userId,
       demo: {
         sessionsAnalyzed: demoSessions.length,
@@ -464,16 +464,16 @@ router.get('/demo/:userId', async (req, res) => {
         } : null
       },
       nextSteps: [
-        '✅ L\'IA a analysé ' + demoSessions.length + ' sessions',
-        '🎯 Score prédit pour demain: ' + prediction.aiScore + '/10',
-        '📈 Continuez à enregistrer vos sessions pour améliorer la précision'
+        'L\'IA a analysé ' + demoSessions.length + ' sessions',
+        'Score prédit pour demain: ' + prediction.aiScore + '/10',
+        'Continuez à enregistrer vos sessions pour améliorer la précision'
       ],
       revolutionaryFeatures: [
-        '🧠 Analyse personnalisée de vos préférences',
-        '🎯 Prédictions IA score 0-10 adaptées à VOUS',
-        '💡 Recommandations intelligentes par géolocalisation',
-        '📊 Apprentissage continu de vos sessions',
-        '⚡ Traitement en temps réel < 1 seconde'
+        'Analyse personnalisée de vos préférences',
+        'Prédictions IA score 0-10 adaptées à VOUS',
+        'Recommandations intelligentes par géolocalisation',
+        'Apprentissage continu de vos sessions',
+        'Traitement en temps réel < 1 seconde'
       ]
     });
 
@@ -484,115 +484,6 @@ router.get('/demo/:userId', async (req, res) => {
       message: 'Erreur dans la démonstration IA',
       error: error.message,
       debug: 'Vérifiez que le moteur IA est bien chargé'
-    });
-  }
-});
-    }
-
-    const { userId } = req.params;
-
-    // 1. Création de sessions démo si nécessaire
-    const existingSessions = sessionService.getUserSessions(userId, 10, 0);
-    
-    if (existingSessions.sessions.length < 3) {
-      // Création de sessions démo réalistes
-      const demoSessions = [
-        {
-          userId, spotName: 'Biarritz - Grande Plage', rating: 8, duration: 90,
-          coordinates: { lat: 43.4832, lng: -1.5586 },
-          notes: 'Super session matinale'
-        },
-        {
-          userId, spotName: 'Anglet - Les Cavaliers', rating: 6, duration: 75,
-          coordinates: { lat: 43.4951, lng: -1.5240 },
-          notes: 'Un peu de monde mais ça passait'
-        },
-        {
-          userId, spotName: 'Biarritz - Grande Plage', rating: 9, duration: 120,
-          coordinates: { lat: 43.4832, lng: -1.5586 },
-          notes: 'Conditions parfaites ! offshore 10km/h'
-        },
-        {
-          userId, spotName: 'Hendaye', rating: 4, duration: 45,
-          coordinates: { lat: 43.3739, lng: -1.7739 },
-          notes: 'Trop petit et pas de force'
-        },
-        {
-          userId, spotName: 'Biarritz - Grande Plage', rating: 7, duration: 85,
-          coordinates: { lat: 43.4832, lng: -1.5586 },
-          notes: 'Bien pour progresser'
-        }
-      ];
-
-      // Création des sessions
-      for (const sessionData of demoSessions) {
-        await sessionService.createQuickSession(userId, sessionData);
-      }
-    }
-
-    // 2. Analyse IA
-    const sessions = sessionService.getUserSessions(userId, 50, 0).sessions;
-    const analysis = await aiEngine.analyzeUserPreferences(userId, sessions);
-
-    // 3. Prédiction pour demain à Biarritz
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(9, 0, 0, 0);
-
-    const mockWeather = {
-      waveHeight: 1.2,
-      windSpeed: 12,
-      windDirection: 'E',
-      tide: 'mid'
-    };
-
-    const prediction = await aiEngine.predictSessionQuality(
-      userId,
-      'Biarritz - Grande Plage',
-      tomorrow.toISOString(),
-      mockWeather
-    );
-
-    // 4. Recommandations
-    const recommendations = await aiEngine.generateSmartRecommendations(
-      userId,
-      { lat: 43.4832, lng: -1.5586 },
-      3
-    );
-
-    res.json({
-      status: 'demo_success',
-      title: 'Démonstration Complète SurfAI',
-      userId: userId,
-      demo: {
-        sessionsCreated: sessions.length,
-        aiAnalysis: {
-          status: analysis.status,
-          dataQuality: analysis.aiProfile?.dataQuality,
-          insights: analysis.insights
-        },
-        prediction: {
-          spot: prediction.spot,
-          aiScore: prediction.aiScore,
-          confidence: prediction.confidence,
-          recommendation: prediction.recommendation
-        },
-        recommendations: {
-          totalOpportunities: recommendations.totalOpportunities,
-          nextBestDay: recommendations.recommendations?.[0]
-        }
-      },
-      nextSteps: [
-        'L\'IA a analysé vos sessions',
-        'Score prédit pour demain: ' + prediction.aiScore + '/10',
-        'Continuez à enregistrer vos sessions pour améliorer la précision'
-      ]
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      message: error.message
     });
   }
 });
