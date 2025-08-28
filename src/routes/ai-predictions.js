@@ -34,30 +34,6 @@ router.get('/test', (req, res) => {
   });
 });
 
-router.post('/predict/demo', async (req, res) => {
-  if (!aiEngine) {
-    return res.status(500).json({ status: 'error', message: 'Moteur IA non disponible' });
-  }
-
-  try {
-    // 1. Analyser les préférences (stockage automatique)
-    const demoSessions = [/* vos sessions de démo existantes */];
-    await aiEngine.analyzeUserPreferences('test_user', demoSessions);
-    
-    // 2. Test prédiction personnalisée
-    const prediction = await aiEngine.predictSessionQuality(
-      'test_user',
-      'Biarritz - Grande Plage', 
-      new Date().toISOString(),
-      { waveHeight: 1.1, windSpeed: 9, windDirection: 'E' }
-    );
-    
-    res.json({ status: 'success', prediction });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-});
-
 router.get('/demo/:userId', async (req, res) => {
   if (!aiEngine) {
     return res.status(500).json({
@@ -102,7 +78,8 @@ router.get('/demo/:userId', async (req, res) => {
     });
   }
 });
-// Test du scoring personnalisé - Étape 2
+
+// NOUVELLE ROUTE POUR TESTER L'ÉTAPE 2
 router.post('/predict/test', async (req, res) => {
   if (!aiEngine) {
     return res.status(500).json({
@@ -112,7 +89,7 @@ router.post('/predict/test', async (req, res) => {
   }
 
   try {
-    // 1. D'abord analyser les sessions pour apprendre les préférences
+    // 1. Sessions de démo pour apprentissage
     const demoSessions = [
       {
         essential: { spot: 'Biarritz - Grande Plage', rating: 8, date: new Date(Date.now() - 86400000 * 5).toISOString() },
@@ -128,21 +105,22 @@ router.post('/predict/test', async (req, res) => {
       }
     ];
 
-    console.log('Étape 1: Apprentissage des préférences...');
-    await aiEngine.analyzeUserPreferences('test_user_v2', demoSessions);
+    console.log('🧠 Apprentissage des préférences...');
+    await aiEngine.analyzeUserPreferences('test_user_scoring', demoSessions);
 
-    console.log('Étape 2: Test prédiction personnalisée...');
-    // 2. Tester la prédiction avec conditions similaires aux préférences
+    console.log('🎯 Test prédiction personnalisée...');
+    
+    // 2. Test avec conditions optimales (similaires aux préférences)
     const predictionOptimal = await aiEngine.predictSessionQuality(
-      'test_user_v2',
+      'test_user_scoring',
       'Biarritz - Grande Plage',
       new Date().toISOString(),
       { waveHeight: 1.1, windSpeed: 9, windDirection: 'E' }
     );
 
-    // 3. Tester avec conditions différentes
+    // 3. Test avec conditions différentes
     const predictionDifferent = await aiEngine.predictSessionQuality(
-      'test_user_v2',
+      'test_user_scoring',
       'Hendaye',
       new Date().toISOString(),
       { waveHeight: 2.5, windSpeed: 25, windDirection: 'W' }
@@ -150,27 +128,33 @@ router.post('/predict/test', async (req, res) => {
 
     res.json({
       status: 'success',
-      message: 'Test scoring personnalisé Étape 2',
+      message: '🧪 Test Étape 2 : Scoring Personnalisé',
+      etape: 2,
       tests: {
         conditionsOptimales: predictionOptimal,
         conditionsDifferentes: predictionDifferent
       },
-      comparaison: {
+      validation: {
         scoreOptimal: predictionOptimal.aiScore,
         scoreDifferent: predictionDifferent.aiScore,
-        difference: predictionOptimal.aiScore - predictionDifferent.aiScore,
-        personalisation: {
+        difference: Math.round((predictionOptimal.aiScore - predictionDifferent.aiScore) * 10) / 10,
+        personnalise: {
           optimal: predictionOptimal.personalized,
           different: predictionDifferent.personalized
+        },
+        recommandations: {
+          optimal: predictionOptimal.recommendation,
+          different: predictionDifferent.recommendation
         }
-      }
+      },
+      success: predictionOptimal.personalized && predictionDifferent.personalized
     });
 
   } catch (error) {
     res.status(500).json({
       status: 'error',
       message: error.message,
-      stack: error.stack
+      etape: 2
     });
   }
 });
