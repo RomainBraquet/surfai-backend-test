@@ -45,8 +45,20 @@ router.get('/demo/:userId', async (req, res) => {
   try {
     const demoSessions = [
       {
-        essential: { spot: 'Biarritz - Grande Plage', rating: 8, date: new Date().toISOString() },
-        autoCompleted: { weather: { waveHeight: 1.2, windSpeed: 10 } }
+        essential: { spot: 'Biarritz - Grande Plage', rating: 8, date: new Date(Date.now() - 86400000 * 5).toISOString() },
+        autoCompleted: { weather: { waveHeight: 1.2, windSpeed: 10, windDirection: 'E', tide: 'mid' } }
+      },
+      {
+        essential: { spot: 'Anglet - Les Cavaliers', rating: 6, date: new Date(Date.now() - 86400000 * 3).toISOString() },
+        autoCompleted: { weather: { waveHeight: 1.5, windSpeed: 18, windDirection: 'NE', tide: 'high' } }
+      },
+      {
+        essential: { spot: 'Biarritz - Grande Plage', rating: 9, date: new Date(Date.now() - 86400000 * 1).toISOString() },
+        autoCompleted: { weather: { waveHeight: 1.1, windSpeed: 8, windDirection: 'E', tide: 'low' } }
+      },
+      {
+        essential: { spot: 'Hendaye', rating: 4, date: new Date(Date.now() - 86400000 * 7).toISOString() },
+        autoCompleted: { weather: { waveHeight: 0.6, windSpeed: 22, windDirection: 'W', tide: 'high' } }
       }
     ];
 
@@ -54,8 +66,9 @@ router.get('/demo/:userId', async (req, res) => {
     
     res.json({
       status: 'success',
-      message: 'Démo IA fonctionnelle',
+      message: 'Démo IA avec analyse complète',
       userId: req.params.userId,
+      sessionsAnalyzed: demoSessions.length,
       analysis: analysis
     });
   } catch (error) {
@@ -65,5 +78,6 @@ router.get('/demo/:userId', async (req, res) => {
     });
   }
 });
+
 
 module.exports = router;
