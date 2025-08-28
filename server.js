@@ -265,6 +265,49 @@ app.get('/api/v1/test/ux-workflow', (req, res) => {
   });
 });
 
+// Routes IA predictions (NOUVEAU)
+let aiPredictionsRouter;
+try {
+  aiPredictionsRouter = require('./src/routes/ai-predictions');
+  console.log('✅ Routes IA prédictions chargées avec succès');
+} catch (error) {
+  console.log('❌ Erreur chargement routes IA:', error.message);
+}
+
+// PUIS dans la section montage des routes, AJOUTEZ après les routes sessions :
+
+// Routes IA predictions (NOUVEAU)
+if (aiPredictionsRouter) {
+  app.use('/api/v1/ai', aiPredictionsRouter);
+  console.log('✅ Routes IA montées sur /api/v1/ai');
+} else {
+  // Route mock pour IA si pas disponible
+  app.get('/api/v1/ai/test', (req, res) => {
+    res.json({
+      status: 'error',
+      message: 'Service IA non disponible - vérifiez le fichier routes/ai-predictions.js'
+    });
+  });
+  console.log('❌ Routes IA non disponibles - mock créé');
+}
+
+// ENFIN, dans availableRoutes (section 404), AJOUTEZ :
+
+'GET /api/v1/ai/test',
+'GET /api/v1/ai/demo/{userId}',
+'GET /api/v1/ai/{userId}/recommendations',
+'POST /api/v1/ai/analyze/{userId}',
+'POST /api/v1/ai/predict',
+
+// ET dans la section health check, modifiez :
+
+services: {
+  smartSlots: smartSlotsRouter ? 'active' : 'inactive',
+  userProfile: profileRouter ? 'active' : 'inactive',
+  sessions: sessionsRouter ? 'active' : 'inactive',
+  aiEngine: aiPredictionsRouter ? 'active' : 'inactive'  // AJOUT
+}
+
 // ===== GESTION D'ERREURS =====
 
 // 404 - Route non trouvée
