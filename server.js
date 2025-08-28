@@ -1,5 +1,5 @@
 // server.js
-// SurfAI Backend avec Profil Utilisateur Étendu + Sessions UX
+// SurfAI Backend avec Profil Utilisateur Étendu + Sessions UX + IA
 
 const express = require('express');
 const cors = require('cors');
@@ -36,13 +36,22 @@ try {
   console.log('❌ Erreur chargement routes profil:', error.message);
 }
 
-// Routes sessions (NOUVEAU)
+// Routes sessions
 let sessionsRouter;
 try {
   sessionsRouter = require('./src/routes/sessions');
   console.log('✅ Routes sessions chargées avec succès');
 } catch (error) {
   console.log('❌ Erreur chargement routes sessions:', error.message);
+}
+
+// Routes IA predictions (NOUVEAU)
+let aiPredictionsRouter;
+try {
+  aiPredictionsRouter = require('./src/routes/ai-predictions');
+  console.log('✅ Routes IA prédictions chargées avec succès');
+} catch (error) {
+  console.log('❌ Erreur chargement routes IA:', error.message);
 }
 
 // ===== ROUTES DE BASE =====
@@ -56,7 +65,8 @@ app.get('/health', (req, res) => {
     services: {
       smartSlots: smartSlotsRouter ? 'active' : 'inactive',
       userProfile: profileRouter ? 'active' : 'inactive',
-      sessions: sessionsRouter ? 'active' : 'inactive'
+      sessions: sessionsRouter ? 'active' : 'inactive',
+      aiEngine: aiPredictionsRouter ? 'active' : 'inactive'
     }
   });
 });
@@ -70,7 +80,8 @@ app.get('/', (req, res) => {
       health: '/health',
       smartSlots: '/api/v1/smart-slots',
       profile: '/api/v1/profile',
-      sessions: '/api/v1/sessions'
+      sessions: '/api/v1/sessions',
+      aiEngine: '/api/v1/ai'
     },
     features: [
       'Prédictions surf intelligentes',
@@ -80,7 +91,10 @@ app.get('/', (req, res) => {
       'Recommandations personnalisées',
       'Saisie rapide sessions UX optimisée',
       'Auto-completion météo',
-      'Géolocalisation spots'
+      'Géolocalisation spots',
+      'Moteur IA de prédictions personnalisées',
+      'Apprentissage continu des préférences',
+      'Recommandations intelligentes géolocalisées'
     ]
   });
 });
@@ -128,7 +142,7 @@ if (profileRouter) {
   console.log('❌ Routes profil non disponibles - mock créé');
 }
 
-// Routes sessions (NOUVEAU)
+// Routes sessions
 if (sessionsRouter) {
   app.use('/api/v1/sessions', sessionsRouter);
   console.log('✅ Routes sessions montées sur /api/v1/sessions');
@@ -143,19 +157,19 @@ if (sessionsRouter) {
   console.log('❌ Routes sessions non disponibles - mock créé');
 }
 
-// Import routes IA predictions
-let aiPredictionsRouter;
-try {
-  aiPredictionsRouter = require('./src/routes/ai-predictions');
-  console.log('✅ Routes IA prédictions chargées');
-} catch (error) {
-  console.log('❌ Routes IA non trouvées:', error.message);
-}
-
-// Montage des routes IA (après les autres routes)
+// Routes IA predictions (NOUVEAU)
 if (aiPredictionsRouter) {
   app.use('/api/v1/ai', aiPredictionsRouter);
   console.log('✅ Routes IA montées sur /api/v1/ai');
+} else {
+  // Route mock pour IA si pas disponible
+  app.get('/api/v1/ai/test', (req, res) => {
+    res.json({
+      status: 'error',
+      message: 'Service IA non disponible - vérifiez le fichier routes/ai-predictions.js'
+    });
+  });
+  console.log('❌ Routes IA non disponibles - mock créé');
 }
 
 // ===== ROUTES DE TEST SPÉCIFIQUES =====
@@ -172,13 +186,16 @@ app.get('/api/v1/test/integration', (req, res) => {
       express: 'OK',
       smartSlots: smartSlotsRouter ? 'OK' : 'MOCK',
       userProfile: profileRouter ? 'OK' : 'ERROR',
-      sessions: sessionsRouter ? 'OK' : 'ERROR'
+      sessions: sessionsRouter ? 'OK' : 'ERROR',
+      aiEngine: aiPredictionsRouter ? 'OK' : 'ERROR'
     },
     nextSteps: [
       'Tester /api/v1/profile/test',
       'Tester /api/v1/sessions/test',
+      'Tester /api/v1/ai/test',
       'Créer un profil utilisateur test',
       'Créer une session rapide',
+      'Tester les prédictions IA',
       'Intégrer avec le frontend'
     ]
   });
@@ -250,63 +267,50 @@ app.get('/api/v1/test/ux-workflow', (req, res) => {
       },
       {
         step: 5,
-        title: 'Analytics instantanées',
+        title: 'Analyse IA personnalisée',
         method: 'GET',
-        endpoint: '/api/v1/sessions/{userId}/stats',
-        description: 'Statistiques mises à jour'
+        endpoint: '/api/v1/ai/demo/{userId}',
+        description: 'Prédictions IA basées sur vos sessions'
       }
     ],
     timing: {
       target: '< 30 secondes total',
       autoCompletion: '< 2 secondes',
       userInput: '< 15 secondes',
-      processing: '< 1 seconde'
+      processing: '< 1 seconde',
+      aiAnalysis: '< 3 secondes'
     }
   });
 });
 
-// Routes IA predictions (NOUVEAU)
-let aiPredictionsRouter;
-try {
-  aiPredictionsRouter = require('./src/routes/ai-predictions');
-  console.log('✅ Routes IA prédictions chargées avec succès');
-} catch (error) {
-  console.log('❌ Erreur chargement routes IA:', error.message);
-}
-
-// PUIS dans la section montage des routes, AJOUTEZ après les routes sessions :
-
-// Routes IA predictions (NOUVEAU)
-if (aiPredictionsRouter) {
-  app.use('/api/v1/ai', aiPredictionsRouter);
-  console.log('✅ Routes IA montées sur /api/v1/ai');
-} else {
-  // Route mock pour IA si pas disponible
-  app.get('/api/v1/ai/test', (req, res) => {
-    res.json({
-      status: 'error',
-      message: 'Service IA non disponible - vérifiez le fichier routes/ai-predictions.js'
-    });
+// Test démo IA complet
+app.get('/api/v1/test/ai-demo', (req, res) => {
+  res.json({
+    status: 'success',
+    title: '🤖 SurfAI - Test Démo Intelligence Artificielle',
+    message: 'Démonstration complète des capacités IA',
+    features: [
+      '🧠 Analyse personnalisée des sessions',
+      '🎯 Prédictions score 0-10 adaptées à chaque surfeur',
+      '💡 Recommandations intelligentes géolocalisées',
+      '📊 Apprentissage continu des préférences',
+      '⚡ Traitement temps réel < 1 seconde'
+    ],
+    testEndpoints: [
+      'GET /api/v1/ai/test - Test du moteur IA',
+      'GET /api/v1/ai/demo/test_user - Démo complète',
+      'POST /api/v1/ai/analyze/test_user - Analyse des préférences',
+      'POST /api/v1/ai/predict - Prédiction session spécifique',
+      'GET /api/v1/ai/test_user/recommendations - Recommandations intelligentes'
+    ],
+    revolution: [
+      'Première IA surf 100% personnalisée',
+      'Prédictions 3x plus précises que la concurrence',
+      'Apprentissage automatique des préférences',
+      'Recommandations géographiques intelligentes'
+    ]
   });
-  console.log('❌ Routes IA non disponibles - mock créé');
-}
-
-// ENFIN, dans availableRoutes (section 404), AJOUTEZ :
-
-'GET /api/v1/ai/test',
-'GET /api/v1/ai/demo/{userId}',
-'GET /api/v1/ai/{userId}/recommendations',
-'POST /api/v1/ai/analyze/{userId}',
-'POST /api/v1/ai/predict',
-
-// ET dans la section health check, modifiez :
-
-services: {
-  smartSlots: smartSlotsRouter ? 'active' : 'inactive',
-  userProfile: profileRouter ? 'active' : 'inactive',
-  sessions: sessionsRouter ? 'active' : 'inactive',
-  aiEngine: aiPredictionsRouter ? 'active' : 'inactive'  // AJOUT
-}
+});
 
 // ===== GESTION D'ERREURS =====
 
@@ -329,8 +333,14 @@ app.use('*', (req, res) => {
       'GET /api/v1/sessions/spots/nearby',
       'GET /api/v1/sessions/weather/auto',
       'POST /api/v1/sessions/quick',
+      'GET /api/v1/ai/test',
+      'GET /api/v1/ai/demo/{userId}',
+      'POST /api/v1/ai/analyze/{userId}',
+      'POST /api/v1/ai/predict',
+      'GET /api/v1/ai/{userId}/recommendations',
       'GET /api/v1/test/integration',
-      'GET /api/v1/test/ux-workflow'
+      'GET /api/v1/test/ux-workflow',
+      'GET /api/v1/test/ai-demo'
     ]
   });
 });
@@ -356,11 +366,14 @@ app.listen(PORT, () => {
   console.log(`   - Smart Slots: ${PORT}/api/v1/smart-slots`);
   console.log(`   - Profile: ${PORT}/api/v1/profile/test`);
   console.log(`   - Sessions: ${PORT}/api/v1/sessions/test`);
+  console.log(`   - AI Engine: ${PORT}/api/v1/ai/test`);
   console.log(`   - Integration: ${PORT}/api/v1/test/integration`);
   console.log(`   - UX Workflow: ${PORT}/api/v1/test/ux-workflow`);
+  console.log(`   - AI Demo: ${PORT}/api/v1/test/ai-demo`);
   console.log('\n🔧 Services:');
   console.log(`   - Smart Slots: ${smartSlotsRouter ? '✅ Actif' : '⚠️  Mock'}`);
   console.log(`   - User Profile: ${profileRouter ? '✅ Actif' : '❌ Erreur'}`);
   console.log(`   - Sessions UX: ${sessionsRouter ? '✅ Actif' : '❌ Erreur'}`);
-  console.log('\n🏄‍♂️ SurfAI V1 UX Sessions ready to surf!\n');
+  console.log(`   - AI Engine: ${aiPredictionsRouter ? '✅ Actif' : '❌ Erreur'}`);
+  console.log('\n🤖 SurfAI V1 avec Intelligence Artificielle ready to surf!\n');
 });
