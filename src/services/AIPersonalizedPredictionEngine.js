@@ -245,6 +245,264 @@ class AIPersonalizedPredictionEngine {
   }
 
   // ===== MÉTHODES UTILITAIRES D'ANALYSE =====
+
+  identifyImprovementAreas(sessions) {
+  const areas = [];
+  
+  if (sessions.length < 5) {
+    areas.push('Surfer plus régulièrement');
+    return areas;
+  }
+  
+  // Analyse des ratings par conditions
+  const lowRatingSessions = sessions.filter(s => s.essential?.rating < 6);
+  
+  if (lowRatingSessions.length > sessions.length * 0.3) {
+    areas.push('Choisir de meilleures conditions');
+  }
+  
+  // Analyse de la régularité
+  const sessionDates = sessions.map(s => new Date(s.essential?.date));
+  const daysBetween = sessionDates.length > 1 ? 
+    (Math.max(...sessionDates) - Math.min(...sessionDates)) / (1000 * 60 * 60 * 24) : 0;
+  
+  if (daysBetween > sessions.length * 14) {
+    areas.push('Surfer plus régulièrement');
+  }
+  
+  // Analyse de la variété des spots
+  const uniqueSpots = new Set(sessions.map(s => s.essential?.spot)).size;
+  if (uniqueSpots < 2 && sessions.length > 5) {
+    areas.push('Explorer de nouveaux spots');
+  }
+  
+  return areas.length > 0 ? areas : ['Continuer sur cette lancée !'];
+}
+
+getNextLevelRequirements(sessions) {
+  const avgRating = sessions.length > 0 ? 
+    sessions.reduce((sum, s) => sum + (s.essential?.rating || 0), 0) / sessions.length : 0;
+  
+  const requirements = [];
+  
+  if (avgRating < 5) {
+    requirements.push('Choisir des conditions plus faciles');
+    requirements.push('Surfer plus régulièrement');
+  } else if (avgRating < 7) {
+    requirements.push('Explorer différents types de vagues');
+    requirements.push('Analyser les conditions optimales');
+  } else if (avgRating < 8.5) {
+    requirements.push('Défier des conditions plus techniques');
+    requirements.push('Partager vos spots favoris');
+  } else {
+    requirements.push('Vous êtes expert ! Aidez les autres');
+  }
+  
+  return requirements;
+}
+
+calculateWeatherInfluence(sessions) {
+  // Calcule l'influence des conditions météo sur les ratings
+  let totalInfluence = 0;
+  let validSessions = 0;
+  
+  sessions.forEach(session => {
+    const weather = session.autoCompleted?.weather;
+    const rating = session.essential?.rating;
+    
+    if (weather && rating) {
+      // Influence basée sur la corrélation rating/météo
+      const waveScore = weather.waveHeight ? Math.min(10, weather.waveHeight * 5) : 5;
+      const windScore = weather.windSpeed ? Math.max(0, 10 - weather.windSpeed / 3) : 5;
+      const weatherScore = (waveScore + windScore) / 2;
+      
+      const correlation = Math.abs(rating - weatherScore) < 2 ? 0.8 : 0.3;
+      totalInfluence += correlation;
+      validSessions++;
+    }
+  });
+  
+  return validSessions > 0 ? totalInfluence / validSessions : 0.5;
+}
+
+calculateSpotInfluence(sessions) {
+  // Calcule l'influence du spot sur les ratings
+  const spotRatings = {};
+  
+  sessions.forEach(session => {
+    const spot = session.essential?.spot;
+    const rating = session.essential?.rating;
+    
+    if (spot && rating) {
+      if (!spotRatings[spot]) {
+        spotRatings[spot] = [];
+      }
+      spotRatings[spot].push(rating);
+    }
+  });
+  
+  // Variance des ratings par spot
+  let totalVariance = 0;
+  let spotCount = 0;
+  
+  Object.values(spotRatings).forEach(ratings => {
+    if (ratings.length > 1) {
+      const avg = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+      const variance = ratings.reduce((sum, r) => sum + Math.pow(r - avg, 2), 0) / ratings.length;
+      totalVariance += variance;
+      spotCount++;
+    }
+  });
+  
+  // Plus la variance est faible, plus l'influence du spot est importante
+  const avgVariance = spotCount > 0 ? totalVariance / spotCount : 5;
+  return Math.max(0.1, Math.min(0.9, 1 - avgVariance / 10));
+}
+
+calculateTimeInfluence(sessions) {
+  // Calcule l'influence du timing sur les ratings
+  const hourRatings = {};
+  
+  sessions.forEach(session => {
+    const date = new Date(session.essential?.date);
+    const hour = date.getHours();
+    const rating = session.essential?.rating;
+    
+    if (rating) {
+      if (!hourRatings[hour]) {
+        hourRatings[hour] = [];
+      }
+      hourRatings[hour].push(rating);
+    }
+  });
+  
+  // Variance des ratings par heure
+  let totalVariance = 0;
+  let hourCount = 0;
+  
+  Object.values(hourRatings).forEach(ratings => {
+    if (ratings.length > 1) {
+      const avg = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+      const variance = ratings.reduce((sum, r) => sum + Math.pow(r - avg, 2), 0) / ratings.length;
+      totalVariance += variance;
+      hourCount++;
+    }
+  });
+  
+  const avgVariance = hourCount > 0 ? totalVariance / hourCount : 5;
+  return Math.max(0.05, Math.min(0.3, 1 - avgVariance / 15)); // Influence plus faible pour le timing
+}
+
+calculateEquipmentInfluence(sessions) {
+  // Influence de l'équipement (à développer quand on aura les données)
+  // Pour l'instant, influence faible par défaut
+  return 0.1;
+}
+
+adjustModelWeights(userProfile, learningRate) {
+  // Ajustement des poids du modèle selon l'erreur de prédiction
+  const factors = userProfile.influenceFactors;
+  
+  // Ajustement conservateur
+  factors.weather = Math.max(0.2, Math.min(0.8, factors.weather + (Math.random() - 0.5) * learningRate));
+  factors.spot = Math.max(0.1, Math.min(0.6, factors.spot + (Math.random() - 0.5) * learningRate));
+  factors.time = Math.max(0.05, Math.min(0.3, factors.time + (Math.random() - 0.5) * learningRate));
+  factors.equipment = Math.max(0.05, Math.min(0.2, factors.equipment + (Math.random() - 0.5) * learningRate));
+  
+  // Normalisation pour que la somme fasse 1
+  const total = factors.weather + factors.spot + factors.time + factors.equipment;
+  factors.weather /= total;
+  factors.spot /= total;
+  factors.time /= total;
+  factors.equipment /= total;
+}
+
+recalculateDataQuality(userProfile, predictionError) {
+  // Recalcul de la qualité des données après feedback
+  let quality = userProfile.dataQuality;
+  
+  if (predictionError < 1) {
+    quality += 0.02; // Amélioration légère
+  } else if (predictionError > 2) {
+    quality -= 0.05; // Dégradation
+  }
+  
+  return Math.max(0.1, Math.min(1.0, quality));
+}
+
+async analyzeDailySlots(userId, targetDate, location) {
+  // Analyse des créneaux optimaux dans une journée
+  const slots = [];
+  const userProfile = this.userPreferences.get(userId);
+  
+  if (!userProfile) return slots;
+  
+  // Créneaux de 3h dans la journée
+  const timeSlots = [6, 9, 12, 15, 18];
+  
+  for (const hour of timeSlots) {
+    const slotDate = new Date(targetDate);
+    slotDate.setHours(hour, 0, 0, 0);
+    
+    // Mock météo pour le créneau
+    const mockWeather = {
+      waveHeight: 1.0 + Math.random(),
+      windSpeed: 5 + Math.random() * 15,
+      windDirection: ['E', 'SE', 'NE'][Math.floor(Math.random() * 3)],
+      tide: ['low', 'mid', 'high'][Math.floor(Math.random() * 3)]
+    };
+    
+    // Prédiction pour ce créneau
+    const prediction = await this.predictSessionQuality(
+      userId,
+      'Biarritz - Grande Plage', // Spot par défaut
+      slotDate.toISOString(),
+      mockWeather
+    );
+    
+    if (prediction.aiScore >= 6) {
+      slots.push({
+        hour: hour,
+        time: `${hour}h00`,
+        score: prediction.aiScore,
+        confidence: prediction.confidence,
+        conditions: mockWeather,
+        recommendation: prediction.recommendation
+      });
+    }
+  }
+  
+  return slots.sort((a, b) => b.score - a.score);
+}
+
+summarizeDay(dailySlots) {
+  if (dailySlots.length === 0) return 'Aucun créneau favorable';
+  
+  const bestSlot = dailySlots[0];
+  const avgScore = dailySlots.reduce((sum, slot) => sum + slot.score, 0) / dailySlots.length;
+  
+  return `Meilleur créneau: ${bestSlot.time} (${bestSlot.score.toFixed(1)}/10)`;
+}
+
+async findAlternatives(userId, targetDateTime, weatherData) {
+  // Trouve des alternatives géographiques
+  const alternatives = [];
+  const alternativeSpots = ['Anglet - Les Cavaliers', 'Hendaye', 'Lacanau Océan'];
+  
+  for (const spot of alternativeSpots) {
+    const prediction = await this.predictSessionQuality(userId, spot, targetDateTime, weatherData);
+    if (prediction.status !== 'no_profile' && prediction.aiScore >= 6) {
+      alternatives.push({
+        spot: spot,
+        score: prediction.aiScore,
+        reason: prediction.recommendation,
+        distance: Math.floor(Math.random() * 30) + 5 + 'km' // Mock distance
+      });
+    }
+  }
+  
+  return alternatives.sort((a, b) => b.score - a.score).slice(0, 2);
+}
   
   extractOptimalConditions(sessions) {
     if (!sessions || sessions.length === 0) return null;
