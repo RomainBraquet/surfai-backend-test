@@ -100,7 +100,7 @@ class AIPersonalizedPredictionEngine {
       message: `Profil IA analysé avec ${sessions.length} sessions`,
       aiProfile: aiProfile,
       insights: this.generateInsights(aiProfile),
-      predictions: await this.generatePredictionsForUser(userId, aiProfile)
+      predictions: null // Sera généré à la demande
     };
   }
 
