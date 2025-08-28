@@ -143,6 +143,21 @@ if (sessionsRouter) {
   console.log('❌ Routes sessions non disponibles - mock créé');
 }
 
+// Import routes IA predictions
+let aiPredictionsRouter;
+try {
+  aiPredictionsRouter = require('./src/routes/ai-predictions');
+  console.log('✅ Routes IA prédictions chargées');
+} catch (error) {
+  console.log('❌ Routes IA non trouvées:', error.message);
+}
+
+// Montage des routes IA (après les autres routes)
+if (aiPredictionsRouter) {
+  app.use('/api/v1/ai', aiPredictionsRouter);
+  console.log('✅ Routes IA montées sur /api/v1/ai');
+}
+
 // ===== ROUTES DE TEST SPÉCIFIQUES =====
 
 // Test intégration complète
