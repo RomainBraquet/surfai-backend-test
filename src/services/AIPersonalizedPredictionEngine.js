@@ -157,7 +157,7 @@ class AIPersonalizedPredictionEngine {
       reasons: this.explainPrediction(conditionScore, spotScore, timeScore, userProfile),
       
       // ALTERNATIVES INTELLIGENTES
-      alternatives: await this.findAlternatives(userId, targetDateTime, weatherData),
+      alternatives: [],(userId, targetDateTime, weatherData),
       
       // MÉTADONNÉES
       generatedAt: new Date().toISOString(),
