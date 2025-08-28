@@ -34,6 +34,30 @@ router.get('/test', (req, res) => {
   });
 });
 
+router.post('/predict/demo', async (req, res) => {
+  if (!aiEngine) {
+    return res.status(500).json({ status: 'error', message: 'Moteur IA non disponible' });
+  }
+
+  try {
+    // 1. Analyser les préférences (stockage automatique)
+    const demoSessions = [/* vos sessions de démo existantes */];
+    await aiEngine.analyzeUserPreferences('test_user', demoSessions);
+    
+    // 2. Test prédiction personnalisée
+    const prediction = await aiEngine.predictSessionQuality(
+      'test_user',
+      'Biarritz - Grande Plage', 
+      new Date().toISOString(),
+      { waveHeight: 1.1, windSpeed: 9, windDirection: 'E' }
+    );
+    
+    res.json({ status: 'success', prediction });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 router.get('/demo/:userId', async (req, res) => {
   if (!aiEngine) {
     return res.status(500).json({
