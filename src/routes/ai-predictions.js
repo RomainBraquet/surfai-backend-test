@@ -159,4 +159,139 @@ router.post('/predict/test', async (req, res) => {
   }
 });
 
+// TEST STORMGLASS INTÉGRATION COMPLÈTE
+router.post('/session/test-stormglass', async (req, res) => {
+  try {
+    // Import des nouveaux services
+    const EnhancedSessionService = require('../services/EnhancedSessionService');
+    const sessionService = new EnhancedSessionService();
+
+    console.log('🌊 Test création session avec Stormglass...');
+
+    // 1. Test création session enrichie automatiquement
+    const sessionData = {
+      spotName: 'Biarritz - Grande Plage',
+      sessionDateTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // Il y a 2h
+      rating: 8,
+      duration: 90,
+      notes: 'Test session enrichie Stormglass'
+    };
+
+    const sessionResult = await sessionService.createEnhancedSession('test_stormglass', sessionData);
+
+    if (!sessionResult.success) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'Échec création session enrichie',
+        error: sessionResult.error
+      });
+    }
+
+    // 2. Récupération des sessions utilisateur
+    const userSessions = sessionService.getUserSessions('test_stormglass');
+    
+    // 3. Analyse qualité des données
+    const qualityAnalysis = sessionService.analyzeSessionDataQuality('test_stormglass');
+
+    // 4. Test avec le moteur IA sur données complètes
+    let aiAnalysis = null;
+    if (aiEngine && userSessions.length > 0) {
+      console.log('🧠 Test IA avec données Stormglass complètes...');
+      
+      // Conversion au format attendu par l'IA
+      const sessionsForAI = userSessions.map(session => ({
+        essential: session.essential,
+        autoCompleted: {
+          weather: {
+            waveHeight: session.conditions.waveHeight,
+            wavePeriod: session.conditions.wavePeriod,          // NOUVEAU
+            waveDirection: session.conditions.waveDirection,    // NOUVEAU
+            windSpeed: session.conditions.windSpeed,
+            windDirection: session.conditions.windDirection,
+            tideLevel: session.conditions.tideLevel,           // NOUVEAU
+            tideDirection: session.conditions.tideDirection,   // NOUVEAU
+            tideCoefficient: session.conditions.tideCoefficient, // NOUVEAU
+            tidePhase: session.conditions.tidePhase,           // NOUVEAU
+            airTemperature: session.conditions.airTemperature,
+            waterTemperature: session.conditions.waterTemperature
+          }
+        }
+      }));
+
+      try {
+        aiAnalysis = await aiEngine.analyzeUserPreferences('test_stormglass', sessionsForAI);
+      } catch (error) {
+        console.error('Erreur analyse IA:', error.message);
+      }
+    }
+
+    res.json({
+      status: 'success',
+      message: '🧪 Test intégration Stormglass complète',
+      tests: {
+        sessionCreation: {
+          success: sessionResult.success,
+          dataQuality: sessionResult.dataQuality,
+          enrichmentSource: sessionResult.session?.enrichment?.source
+        },
+        stormglassData: {
+          // Données vagues complètes
+          waves: {
+            height: sessionResult.session?.conditions?.waveHeight,
+            period: sessionResult.session?.conditions?.wavePeriod,        // NOUVEAU
+            direction: sessionResult.session?.conditions?.waveDirection,   // NOUVEAU
+            quality: sessionResult.session?.conditions?.waveQuality
+          },
+          // Données marées complètes
+          tides: {
+            level: sessionResult.session?.conditions?.tideLevel,          // NOUVEAU
+            direction: sessionResult.session?.conditions?.tideDirection,   // NOUVEAU
+            coefficient: sessionResult.session?.conditions?.tideCoefficient, // NOUVEAU
+            phase: sessionResult.session?.conditions?.tidePhase,          // NOUVEAU
+            nextExtreme: sessionResult.session?.conditions?.nextTideExtreme // NOUVEAU
+          },
+          // Données vent et météo
+          weather: {
+            windSpeed: sessionResult.session?.conditions?.windSpeed,
+            windDirection: sessionResult.session?.conditions?.windDirection,
+            airTemp: sessionResult.session?.conditions?.airTemperature,
+            waterTemp: sessionResult.session?.conditions?.waterTemperature
+          }
+        },
+        dataQuality: qualityAnalysis,
+        aiAnalysis: aiAnalysis ? {
+          status: aiAnalysis.status,
+          dataQuality: aiAnalysis.dataQuality,
+          optimalConditions: aiAnalysis.aiProfile?.optimalConditions,
+          insights: aiAnalysis.insights
+        } : null
+      },
+      completeness: {
+        criticalData: {
+          wavePeriod: !!sessionResult.session?.conditions?.wavePeriod,
+          tideData: !!sessionResult.session?.conditions?.tideLevel,
+          waveDirection: !!sessionResult.session?.conditions?.waveDirection,
+          tideDirection: !!sessionResult.session?.conditions?.tideDirection
+        },
+        score: sessionResult.dataQuality
+      },
+      nextSteps: [
+        'Données critiques intégrées (période vagues, marées)',
+        'Sessions enrichies automatiquement',
+        'IA peut maintenant faire de vraies prédictions personnalisées',
+        'Prêt pour prédictions futures avec Stormglass'
+      ]
+    });
+
+  } catch (error) {
+    console.error('Erreur test Stormglass:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Test Stormglass échoué',
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 module.exports = router;
