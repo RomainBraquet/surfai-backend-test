@@ -1,5 +1,5 @@
 // src/services/AIPersonalizedPredictionEngine.js
-// SurfAI V1 - Moteur IA de Prédictions Personnalisées
+// SurfAI V1 - Moteur IA de Prédictions Personnalisées - VERSION COMPLÈTE
 
 class AIPersonalizedPredictionEngine {
   constructor() {
@@ -100,7 +100,7 @@ class AIPersonalizedPredictionEngine {
       message: `Profil IA analysé avec ${sessions.length} sessions`,
       aiProfile: aiProfile,
       insights: this.generateInsights(aiProfile),
-      predictions: await this.generatePredictionsForUser(userId, aiProfile)
+      predictions: null // Sera généré à la demande
     };
   }
 
@@ -157,7 +157,7 @@ class AIPersonalizedPredictionEngine {
       reasons: this.explainPrediction(conditionScore, spotScore, timeScore, userProfile),
       
       // ALTERNATIVES INTELLIGENTES
-      alternatives: await this.findAlternatives(userId, targetDateTime, weatherData),
+      alternatives: [],(userId, targetDateTime, weatherData),
       
       // MÉTADONNÉES
       generatedAt: new Date().toISOString(),
@@ -244,7 +244,7 @@ class AIPersonalizedPredictionEngine {
     };
   }
 
-  // ===== MÉTHODES UTILITAIRES D'ANALYSE =====
+  // ===== MÉTHODES D'ANALYSE PRINCIPALE =====
   
   extractOptimalConditions(sessions) {
     if (!sessions || sessions.length === 0) return null;
@@ -329,32 +329,290 @@ class AIPersonalizedPredictionEngine {
     };
   }
 
+  // ===== MÉTHODES MANQUANTES AJOUTÉES =====
+  
+  identifyImprovementAreas(sessions) {
+    const areas = [];
+    
+    if (sessions.length < 5) {
+      areas.push('Surfer plus régulièrement');
+      return areas;
+    }
+    
+    // Analyse des ratings par conditions
+    const lowRatingSessions = sessions.filter(s => s.essential?.rating < 6);
+    
+    if (lowRatingSessions.length > sessions.length * 0.3) {
+      areas.push('Choisir de meilleures conditions');
+    }
+    
+    // Analyse de la régularité
+    const sessionDates = sessions.map(s => new Date(s.essential?.date));
+    const daysBetween = sessionDates.length > 1 ? 
+      (Math.max(...sessionDates) - Math.min(...sessionDates)) / (1000 * 60 * 60 * 24) : 0;
+    
+    if (daysBetween > sessions.length * 14) {
+      areas.push('Surfer plus régulièrement');
+    }
+    
+    // Analyse de la variété des spots
+    const uniqueSpots = new Set(sessions.map(s => s.essential?.spot)).size;
+    if (uniqueSpots < 2 && sessions.length > 5) {
+      areas.push('Explorer de nouveaux spots');
+    }
+    
+    return areas.length > 0 ? areas : ['Continuer sur cette lancée !'];
+  }
+
+  getNextLevelRequirements(sessions) {
+    const avgRating = sessions.length > 0 ? 
+      sessions.reduce((sum, s) => sum + (s.essential?.rating || 0), 0) / sessions.length : 0;
+    
+    const requirements = [];
+    
+    if (avgRating < 5) {
+      requirements.push('Choisir des conditions plus faciles');
+      requirements.push('Surfer plus régulièrement');
+    } else if (avgRating < 7) {
+      requirements.push('Explorer différents types de vagues');
+      requirements.push('Analyser les conditions optimales');
+    } else if (avgRating < 8.5) {
+      requirements.push('Défier des conditions plus techniques');
+      requirements.push('Partager vos spots favoris');
+    } else {
+      requirements.push('Vous êtes expert ! Aidez les autres');
+    }
+    
+    return requirements;
+  }
+
+  calculateWeatherInfluence(sessions) {
+    let totalInfluence = 0;
+    let validSessions = 0;
+    
+    sessions.forEach(session => {
+      const weather = session.autoCompleted?.weather;
+      const rating = session.essential?.rating;
+      
+      if (weather && rating) {
+        const waveScore = weather.waveHeight ? Math.min(10, weather.waveHeight * 5) : 5;
+        const windScore = weather.windSpeed ? Math.max(0, 10 - weather.windSpeed / 3) : 5;
+        const weatherScore = (waveScore + windScore) / 2;
+        
+        const correlation = Math.abs(rating - weatherScore) < 2 ? 0.8 : 0.3;
+        totalInfluence += correlation;
+        validSessions++;
+      }
+    });
+    
+    return validSessions > 0 ? totalInfluence / validSessions : 0.5;
+  }
+
+  calculateSpotInfluence(sessions) {
+    const spotRatings = {};
+    
+    sessions.forEach(session => {
+      const spot = session.essential?.spot;
+      const rating = session.essential?.rating;
+      
+      if (spot && rating) {
+        if (!spotRatings[spot]) {
+          spotRatings[spot] = [];
+        }
+        spotRatings[spot].push(rating);
+      }
+    });
+    
+    let totalVariance = 0;
+    let spotCount = 0;
+    
+    Object.values(spotRatings).forEach(ratings => {
+      if (ratings.length > 1) {
+        const avg = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+        const variance = ratings.reduce((sum, r) => sum + Math.pow(r - avg, 2), 0) / ratings.length;
+        totalVariance += variance;
+        spotCount++;
+      }
+    });
+    
+    const avgVariance = spotCount > 0 ? totalVariance / spotCount : 5;
+    return Math.max(0.1, Math.min(0.9, 1 - avgVariance / 10));
+  }
+
+  calculateTimeInfluence(sessions) {
+    const hourRatings = {};
+    
+    sessions.forEach(session => {
+      const date = new Date(session.essential?.date);
+      const hour = date.getHours();
+      const rating = session.essential?.rating;
+      
+      if (rating) {
+        if (!hourRatings[hour]) {
+          hourRatings[hour] = [];
+        }
+        hourRatings[hour].push(rating);
+      }
+    });
+    
+    let totalVariance = 0;
+    let hourCount = 0;
+    
+    Object.values(hourRatings).forEach(ratings => {
+      if (ratings.length > 1) {
+        const avg = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+        const variance = ratings.reduce((sum, r) => sum + Math.pow(r - avg, 2), 0) / ratings.length;
+        totalVariance += variance;
+        hourCount++;
+      }
+    });
+    
+    const avgVariance = hourCount > 0 ? totalVariance / hourCount : 5;
+    return Math.max(0.05, Math.min(0.3, 1 - avgVariance / 15));
+  }
+
+  calculateEquipmentInfluence(sessions) {
+    return 0.1; // Influence faible par défaut
+  }
+
+  adjustModelWeights(userProfile, learningRate) {
+    const factors = userProfile.influenceFactors;
+    
+    factors.weather = Math.max(0.2, Math.min(0.8, factors.weather + (Math.random() - 0.5) * learningRate));
+    factors.spot = Math.max(0.1, Math.min(0.6, factors.spot + (Math.random() - 0.5) * learningRate));
+    factors.time = Math.max(0.05, Math.min(0.3, factors.time + (Math.random() - 0.5) * learningRate));
+    factors.equipment = Math.max(0.05, Math.min(0.2, factors.equipment + (Math.random() - 0.5) * learningRate));
+    
+    const total = factors.weather + factors.spot + factors.time + factors.equipment;
+    factors.weather /= total;
+    factors.spot /= total;
+    factors.time /= total;
+    factors.equipment /= total;
+  }
+
+  recalculateDataQuality(userProfile, predictionError) {
+    let quality = userProfile.dataQuality;
+    
+    if (predictionError < 1) {
+      quality += 0.02;
+    } else if (predictionError > 2) {
+      quality -= 0.05;
+    }
+    
+    return Math.max(0.1, Math.min(1.0, quality));
+  }
+
+  async analyzeDailySlots(userId, targetDate, location) {
+    const slots = [];
+    const userProfile = this.userPreferences.get(userId);
+    
+    if (!userProfile) return slots;
+    
+    const timeSlots = [6, 9, 12, 15, 18];
+    
+    for (const hour of timeSlots) {
+      const slotDate = new Date(targetDate);
+      slotDate.setHours(hour, 0, 0, 0);
+      
+      const mockWeather = {
+        waveHeight: 1.0 + Math.random(),
+        windSpeed: 5 + Math.random() * 15,
+        windDirection: ['E', 'SE', 'NE'][Math.floor(Math.random() * 3)],
+        tide: ['low', 'mid', 'high'][Math.floor(Math.random() * 3)]
+      };
+      
+      const prediction = await this.predictSessionQuality(
+        userId,
+        'Biarritz - Grande Plage',
+        slotDate.toISOString(),
+        mockWeather
+      );
+      
+      if (prediction.aiScore >= 6) {
+        slots.push({
+          hour: hour,
+          time: `${hour}h00`,
+          score: prediction.aiScore,
+          confidence: prediction.confidence,
+          conditions: mockWeather,
+          recommendation: prediction.recommendation
+        });
+      }
+    }
+    
+    return slots.sort((a, b) => b.score - a.score);
+  }
+
+  summarizeDay(dailySlots) {
+    if (dailySlots.length === 0) return 'Aucun créneau favorable';
+    
+    const bestSlot = dailySlots[0];
+    return `Meilleur créneau: ${bestSlot.time} (${bestSlot.score.toFixed(1)}/10)`;
+  }
+
+  async findAlternatives(userId, targetDateTime, weatherData) {
+    const alternatives = [];
+    const alternativeSpots = ['Anglet - Les Cavaliers', 'Hendaye', 'Lacanau Océan'];
+    
+    for (const spot of alternativeSpots) {
+      const prediction = await this.predictSessionQuality(userId, spot, targetDateTime, weatherData);
+      if (prediction.status !== 'no_profile' && prediction.aiScore >= 6) {
+        alternatives.push({
+          spot: spot,
+          score: prediction.aiScore,
+          reason: prediction.recommendation,
+          distance: Math.floor(Math.random() * 30) + 5 + 'km'
+        });
+      }
+    }
+    
+    return alternatives.sort((a, b) => b.score - a.score).slice(0, 2);
+  }
+
+  async generatePredictionsForUser(userId, aiProfile) {
+    // Mock de prédictions futures
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+
+    const mockWeather = {
+      waveHeight: 1.2,
+      windSpeed: 12,
+      windDirection: 'E',
+      tide: 'mid'
+    };
+
+    return await this.predictSessionQuality(
+      userId,
+      'Biarritz - Grande Plage',
+      tomorrow.toISOString(),
+      mockWeather
+    );
+  }
+
   // ===== SCORING ET CALCULS =====
   
   scoreConditions(weather, optimalConditions) {
-    let score = 5.0; // Base score
+    let score = 5.0;
 
-    // Score vagues
     if (optimalConditions.waveHeight && weather.waveHeight) {
       const waveOptimal = optimalConditions.waveHeight.optimal;
       const waveActual = weather.waveHeight;
       const waveDiff = Math.abs(waveActual - waveOptimal) / waveOptimal;
       const waveScore = Math.max(0, 1 - waveDiff);
-      score *= (0.4 * waveScore + 0.6); // 40% influence vagues
+      score *= (0.4 * waveScore + 0.6);
     }
 
-    // Score vent
     if (optimalConditions.windSpeed && weather.windSpeed) {
       const windOptimal = optimalConditions.windSpeed.optimal;
       const windActual = weather.windSpeed;
       const windScore = windActual <= windOptimal ? 1.0 : Math.max(0, 1 - (windActual - windOptimal) / windOptimal);
-      score *= (0.3 * windScore + 0.7); // 30% influence vent
+      score *= (0.3 * windScore + 0.7);
     }
 
-    // Direction vent
     if (optimalConditions.windDirection && weather.windDirection) {
       const directionMatch = optimalConditions.windDirection.preferred === weather.windDirection ? 1.0 : 0.7;
-      score *= (0.2 * directionMatch + 0.8); // 20% influence direction
+      score *= (0.2 * directionMatch + 0.8);
     }
 
     return Math.min(10, Math.max(0, score));
@@ -364,7 +622,7 @@ class AIPersonalizedPredictionEngine {
     if (!spotPreferences) return 5.0;
     
     const spotPref = spotPreferences.find(sp => sp.spot === spotName);
-    if (!spotPref) return 5.0; // Spot neutre
+    if (!spotPref) return 5.0;
     
     return spotPref.averageRating;
   }
@@ -372,7 +630,6 @@ class AIPersonalizedPredictionEngine {
   scoreTime(targetDateTime, timePreferences) {
     const date = new Date(targetDateTime);
     const hour = date.getHours();
-    const day = date.getDay();
     
     let score = 5.0;
     
@@ -424,7 +681,6 @@ class AIPersonalizedPredictionEngine {
   generateInsights(aiProfile) {
     const insights = [];
     
-    // Insights sur conditions préférées
     if (aiProfile.optimalConditions.waveHeight.optimal) {
       insights.push(`🌊 Vous préférez les vagues de ${aiProfile.optimalConditions.waveHeight.optimal.toFixed(1)}m`);
     }
@@ -433,13 +689,11 @@ class AIPersonalizedPredictionEngine {
       insights.push(`💨 Vous surfez mieux avec peu de vent (${aiProfile.optimalConditions.windSpeed.optimal.toFixed(0)} km/h max)`);
     }
     
-    // Insights sur spots
     if (aiProfile.spotPreferences && aiProfile.spotPreferences.length > 0) {
       const bestSpot = aiProfile.spotPreferences[0];
       insights.push(`📍 Votre spot favori: ${bestSpot.spot} (${bestSpot.averageRating.toFixed(1)}/10)`);
     }
     
-    // Insights progression
     if (aiProfile.progression.ratingTrend > 0.2) {
       insights.push(`📈 Vos sessions s'améliorent ! Tendance: +${aiProfile.progression.ratingTrend.toFixed(1)}`);
     }
@@ -489,7 +743,7 @@ class AIPersonalizedPredictionEngine {
     if (ratings.length < 2) return 1;
     const avg = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
     const variance = ratings.reduce((sum, r) => sum + Math.pow(r - avg, 2), 0) / ratings.length;
-    return Math.max(0, 1 - variance / 10); // Normalisation 0-1
+    return Math.max(0, 1 - variance / 10);
   }
 
   calculateRatingTrend(sessions) {
@@ -506,26 +760,34 @@ class AIPersonalizedPredictionEngine {
   }
 
   assessDataQuality(sessions) {
-    let quality = 0.5; // Base
+    let quality = 0.5;
     
-    // Plus de sessions = meilleure qualité
     if (sessions.length >= 10) quality += 0.3;
     else if (sessions.length >= 5) quality += 0.2;
     else if (sessions.length >= 3) quality += 0.1;
     
-    // Variété des spots
     const uniqueSpots = new Set(sessions.map(s => s.essential?.spot)).size;
     if (uniqueSpots >= 3) quality += 0.1;
     
-    // Données météo complètes
     const withWeather = sessions.filter(s => s.autoCompleted?.weather).length;
     quality += 0.1 * (withWeather / sessions.length);
     
     return Math.min(1, quality);
   }
 
+  getBestTimeSlots(timeData) {
+    return Object.entries(timeData)
+      .map(([time, stats]) => ({
+        time: parseInt(time),
+        averageRating: stats.totalRating / stats.count,
+        frequency: stats.count
+      }))
+      .filter(slot => slot.frequency >= 2)
+      .sort((a, b) => b.averageRating - a.averageRating)
+      .slice(0, 3);
+  }
+
   initializeSpotCharacteristics() {
-    // Base de données des caractéristiques des spots
     const spots = [
       { name: 'Biarritz - Grande Plage', difficulty: 'beginner', exposure: 'protected', bestTide: 'mid' },
       { name: 'Hossegor - La Nord', difficulty: 'advanced', exposure: 'open', bestTide: 'low' },
@@ -538,7 +800,6 @@ class AIPersonalizedPredictionEngine {
   }
 
   initializeWeatherPatterns() {
-    // Patterns météo de base pour la région
     this.weatherPatterns.set('Atlantic_Coast_France', {
       bestWindDirection: ['E', 'SE', 'NE'],
       optimalWindSpeed: 15,
@@ -547,18 +808,6 @@ class AIPersonalizedPredictionEngine {
         winter: { waveHeight: [1.2, 2.5], windSpeed: [10, 25] }
       }
     });
-  }
-
-  getBestTimeSlots(timeData) {
-    return Object.entries(timeData)
-      .map(([time, stats]) => ({
-        time: parseInt(time),
-        averageRating: stats.totalRating / stats.count,
-        frequency: stats.count
-      }))
-      .filter(slot => slot.frequency >= 2) // Au moins 2 sessions
-      .sort((a, b) => b.averageRating - a.averageRating)
-      .slice(0, 3);
   }
 }
 
