@@ -290,11 +290,203 @@ router.post('/feedback', async (req, res) => {
 // GET /demo/:userId - Démonstration complète IA
 router.get('/demo/:userId', async (req, res) => {
   try {
-    if (!aiEngine || !sessionService) {
+    if (!aiEngine) {
       return res.status(500).json({
         status: 'error',
-        message: 'Services nécessaires non disponibles'
+        message: 'Moteur IA non disponible'
       });
+    }
+
+    const { userId } = req.params;
+
+    // Sessions de démo simulées directement
+    const demoSessions = [
+      {
+        id: 'demo1',
+        userId: userId,
+        createdAt: new Date().toISOString(),
+        essential: {
+          spot: 'Biarritz - Grande Plage',
+          date: new Date(Date.now() - 86400000 * 5).toISOString(), // Il y a 5 jours
+          rating: 8,
+          duration: 90,
+          notes: 'Super session matinale'
+        },
+        autoCompleted: {
+          weather: {
+            waveHeight: 1.2,
+            windSpeed: 10,
+            windDirection: 'E',
+            tide: 'mid'
+          }
+        }
+      },
+      {
+        id: 'demo2',
+        userId: userId,
+        createdAt: new Date().toISOString(),
+        essential: {
+          spot: 'Anglet - Les Cavaliers',
+          date: new Date(Date.now() - 86400000 * 3).toISOString(), // Il y a 3 jours
+          rating: 6,
+          duration: 75,
+          notes: 'Un peu de monde mais ça passait'
+        },
+        autoCompleted: {
+          weather: {
+            waveHeight: 1.5,
+            windSpeed: 18,
+            windDirection: 'NE',
+            tide: 'high'
+          }
+        }
+      },
+      {
+        id: 'demo3',
+        userId: userId,
+        createdAt: new Date().toISOString(),
+        essential: {
+          spot: 'Biarritz - Grande Plage',
+          date: new Date(Date.now() - 86400000 * 1).toISOString(), // Hier
+          rating: 9,
+          duration: 120,
+          notes: 'Conditions parfaites ! offshore 10km/h'
+        },
+        autoCompleted: {
+          weather: {
+            waveHeight: 1.1,
+            windSpeed: 8,
+            windDirection: 'E',
+            tide: 'low'
+          }
+        }
+      },
+      {
+        id: 'demo4',
+        userId: userId,
+        createdAt: new Date().toISOString(),
+        essential: {
+          spot: 'Hendaye',
+          date: new Date(Date.now() - 86400000 * 7).toISOString(), // Il y a 7 jours
+          rating: 4,
+          duration: 45,
+          notes: 'Trop petit et pas de force'
+        },
+        autoCompleted: {
+          weather: {
+            waveHeight: 0.6,
+            windSpeed: 22,
+            windDirection: 'W',
+            tide: 'high'
+          }
+        }
+      },
+      {
+        id: 'demo5',
+        userId: userId,
+        createdAt: new Date().toISOString(),
+        essential: {
+          spot: 'Biarritz - Grande Plage',
+          date: new Date(Date.now() - 86400000 * 2).toISOString(), // Il y a 2 jours
+          rating: 7,
+          duration: 85,
+          notes: 'Bien pour progresser'
+        },
+        autoCompleted: {
+          weather: {
+            waveHeight: 1.4,
+            windSpeed: 15,
+            windDirection: 'SE',
+            tide: 'mid'
+          }
+        }
+      }
+    ];
+
+    // 1. Analyse IA avec sessions simulées
+    const analysis = await aiEngine.analyzeUserPreferences(userId, demoSessions);
+
+    // 2. Prédiction pour demain à Biarritz
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+
+    const mockWeather = {
+      waveHeight: 1.2,
+      windSpeed: 12,
+      windDirection: 'E',
+      tide: 'mid'
+    };
+
+    const prediction = await aiEngine.predictSessionQuality(
+      userId,
+      'Biarritz - Grande Plage',
+      tomorrow.toISOString(),
+      mockWeather
+    );
+
+    // 3. Recommandations
+    const recommendations = await aiEngine.generateSmartRecommendations(
+      userId,
+      { lat: 43.4832, lng: -1.5586 },
+      3
+    );
+
+    res.json({
+      status: 'demo_success',
+      title: '🤖 SurfAI - Démonstration Moteur IA',
+      userId: userId,
+      demo: {
+        sessionsAnalyzed: demoSessions.length,
+        aiAnalysis: {
+          status: analysis.status,
+          dataQuality: Math.round((analysis.aiProfile?.dataQuality || 0.5) * 100) + '%',
+          insights: analysis.insights || []
+        },
+        tomorrowPrediction: {
+          spot: prediction.spot,
+          aiScore: prediction.aiScore,
+          confidence: Math.round(prediction.confidence) + '%',
+          recommendation: prediction.recommendation,
+          reasons: prediction.reasons
+        },
+        recommendations: {
+          totalOpportunities: recommendations.totalOpportunities || 0,
+          nextBestDay: recommendations.recommendations?.[0] || null
+        }
+      },
+      intelligence: {
+        userPreferences: analysis.aiProfile ? {
+          optimalWaveHeight: analysis.aiProfile.optimalConditions?.waveHeight?.optimal?.toFixed(1) + 'm',
+          preferredWindSpeed: analysis.aiProfile.optimalConditions?.windSpeed?.optimal?.toFixed(0) + ' km/h',
+          favoriteSpot: analysis.aiProfile.spotPreferences?.[0]?.spot,
+          progression: analysis.aiProfile.progression?.ratingTrend > 0 ? 'amélioration' : 'stable'
+        } : null
+      },
+      nextSteps: [
+        '✅ L\'IA a analysé ' + demoSessions.length + ' sessions',
+        '🎯 Score prédit pour demain: ' + prediction.aiScore + '/10',
+        '📈 Continuez à enregistrer vos sessions pour améliorer la précision'
+      ],
+      revolutionaryFeatures: [
+        '🧠 Analyse personnalisée de vos préférences',
+        '🎯 Prédictions IA score 0-10 adaptées à VOUS',
+        '💡 Recommandations intelligentes par géolocalisation',
+        '📊 Apprentissage continu de vos sessions',
+        '⚡ Traitement en temps réel < 1 seconde'
+      ]
+    });
+
+  } catch (error) {
+    console.error('Erreur démo IA:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erreur dans la démonstration IA',
+      error: error.message,
+      debug: 'Vérifiez que le moteur IA est bien chargé'
+    });
+  }
+});
     }
 
     const { userId } = req.params;
