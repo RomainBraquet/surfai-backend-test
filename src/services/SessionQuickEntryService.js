@@ -270,6 +270,29 @@ class SessionQuickEntryService {
   }
 
   // ===== MÉTHODES UTILITAIRES =====
+
+  getUserSessions(userId, limit = 10, offset = 0) {
+  console.log(`📊 Récupération sessions pour ${userId}`);
+  
+  // Filtrer les sessions de l'utilisateur
+  const userSessions = Array.from(this.sessions.values())
+    .filter(session => session.userId === userId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(offset, offset + limit);
+
+  const totalSessions = Array.from(this.sessions.values())
+    .filter(session => session.userId === userId).length;
+
+  console.log(`✅ Trouvé ${userSessions.length}/${totalSessions} sessions pour ${userId}`);
+
+  return {
+    sessions: userSessions,
+    total: totalSessions,
+    limit: limit,
+    offset: offset,
+    hasMore: totalSessions > (offset + limit)
+  };
+}
   
   calculateDistance(lat1, lng1, lat2, lng2) {
     const R = 6371; // Rayon de la Terre en km
