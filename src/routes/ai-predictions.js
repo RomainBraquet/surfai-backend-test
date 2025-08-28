@@ -79,7 +79,7 @@ router.get('/demo/:userId', async (req, res) => {
   }
 });
 
-// NOUVELLE ROUTE POUR TESTER L'ÉTAPE 2
+// ROUTE TEST SCORING PERSONNALISÉ - ÉTAPE 2
 router.post('/predict/test', async (req, res) => {
   if (!aiEngine) {
     return res.status(500).json({
@@ -89,7 +89,6 @@ router.post('/predict/test', async (req, res) => {
   }
 
   try {
-    // 1. Sessions de démo pour apprentissage
     const demoSessions = [
       {
         essential: { spot: 'Biarritz - Grande Plage', rating: 8, date: new Date(Date.now() - 86400000 * 5).toISOString() },
@@ -110,7 +109,6 @@ router.post('/predict/test', async (req, res) => {
 
     console.log('🎯 Test prédiction personnalisée...');
     
-    // 2. Test avec conditions optimales (similaires aux préférences)
     const predictionOptimal = await aiEngine.predictSessionQuality(
       'test_user_scoring',
       'Biarritz - Grande Plage',
@@ -118,7 +116,6 @@ router.post('/predict/test', async (req, res) => {
       { waveHeight: 1.1, windSpeed: 9, windDirection: 'E' }
     );
 
-    // 3. Test avec conditions différentes
     const predictionDifferent = await aiEngine.predictSessionQuality(
       'test_user_scoring',
       'Hendaye',
@@ -159,13 +156,23 @@ router.post('/predict/test', async (req, res) => {
   }
 });
 
-// TEST INTÉGRATION STORMGLASS COMPLÈTE
+// ROUTE TEST STORMGLASS - ÉTAPE 3
 router.get('/test-stormglass', async (req, res) => {
   try {
     console.log('🌊 Test intégration Stormglass...');
     
     // Import du service Stormglass amélioré
-    const stormglassService = require('../services/stormglassService');
+    let stormglassService;
+    try {
+      stormglassService = require('../services/stormglassService');
+    } catch (error) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'Service Stormglass non trouvé',
+        error: 'Fichier stormglassService.js manquant ou erreur import',
+        solution: 'Vérifiez que le fichier existe dans src/services/'
+      });
+    }
     
     // Test de connexion
     const connectionTest = await stormglassService.testConnection();
